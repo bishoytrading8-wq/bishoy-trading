@@ -1,8 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
-import { CATEGORIES } from "./products-data";
-import { countProducts } from "./lib/catalog";
+import { getCategories, getCategoryCounts, countProducts } from "./lib/catalog";
 import MembersCTA from "./components/MembersCTA";
+
+export const revalidate = 0;
 
 const WHY = [
   { icon: "✅", title: "جودة مضمونة", desc: "منتجات مختارة بعناية قبل ما توصلك" },
@@ -12,7 +13,12 @@ const WHY = [
 ];
 
 export default async function Home() {
-  const total = await countProducts();
+  const [cats, counts, total] = await Promise.all([
+    getCategories(),
+    getCategoryCounts(),
+    countProducts(),
+  ]);
+
   return (
     <>
       {/* ===== الهيرو ===== */}
@@ -57,18 +63,25 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* ===== الأقسام ===== */}
+      {/* ===== الأقسام — من قاعدة البيانات ===== */}
       <section id="categories" className="max-w-7xl mx-auto px-4 lg:px-8 py-16 scroll-mt-24">
         <div className="text-center mb-10">
           <h2 className="text-3xl lg:text-4xl font-black">أقسامنا <span className="text-orange-400">الرئيسية</span></h2>
           <p className="text-white/50 mt-3">اختار القسم واستعرض منتجاتنا</p>
         </div>
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {CATEGORIES.map((c) => (
+          {cats.map((c) => (
             <Link key={c.slug} href={`/category/${c.slug}`} className="group rounded-3xl bg-[#101a30] border border-white/10 hover:border-orange-500/50 p-6 transition-all duration-300 hover:-translate-y-1.5">
               <div className="flex items-start justify-between">
-                <span className="text-5xl">{c.emoji}</span>
-                <span className="text-xs bg-orange-500/10 text-orange-300 border border-orange-500/20 rounded-full px-3 py-1 font-bold">{c.products.length} منتجات</span>
+                {c.image ? (
+                  <span className="w-14 h-14 rounded-2xl overflow-hidden ring-2 ring-orange-500/40">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={c.image} alt={c.name} className="w-full h-full object-cover" />
+                  </span>
+                ) : (
+                  <span className="text-5xl">{c.emoji}</span>
+                )}
+                <span className="text-xs bg-orange-500/10 text-orange-300 border border-orange-500/20 rounded-full px-3 py-1 font-bold">{counts[c.slug] ?? 0} منتجات</span>
               </div>
               <h3 className="text-xl font-extrabold mt-4 group-hover:text-orange-400 transition">{c.name}</h3>
               <p className="text-sm text-white/50 mt-1">{c.tagline}</p>

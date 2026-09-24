@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { getCategory } from "../../products-data";
-import { getProductsByCategory } from "../../lib/catalog";
+import { getCategoryBySlug, getProductsByCategory } from "../../lib/catalog";
 import DbProductCard from "../../components/DbProductCard";
 import MembersBanner from "../../components/MembersBanner";
 
@@ -10,13 +9,13 @@ export const revalidate = 0;
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const cat = getCategory(slug);
+  const cat = await getCategoryBySlug(slug);
   return cat ? { title: cat.name, description: cat.tagline } : {};
 }
 
 export default async function CategoryPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const cat = getCategory(slug);
+  const cat = await getCategoryBySlug(slug);
   if (!cat) notFound();
   const products = await getProductsByCategory(slug);
 
@@ -28,7 +27,14 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
       </nav>
 
       <div className="flex items-center gap-4 mb-2">
-        <span className="text-5xl">{cat.emoji}</span>
+        {cat.image ? (
+          <span className="w-16 h-16 rounded-2xl overflow-hidden ring-2 ring-orange-500/40">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={cat.image} alt={cat.name} className="w-full h-full object-cover" />
+          </span>
+        ) : (
+          <span className="text-5xl">{cat.emoji}</span>
+        )}
         <div>
           <h1 className="text-3xl lg:text-4xl font-black">{cat.name}</h1>
           <p className="text-white/50 mt-1">{cat.tagline}</p>

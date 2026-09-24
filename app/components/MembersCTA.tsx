@@ -9,7 +9,6 @@ export default function MembersCTA() {
 
   if (loading) return null;
 
-  // 👤 زائر — دعوة للتسجيل
   if (!user) {
     return (
       <section className="max-w-5xl mx-auto px-4 pb-8 pt-10">
@@ -30,7 +29,6 @@ export default function MembersCTA() {
     );
   }
 
-  // ✅ مسجل دخول — ترحيب + زرار مناورة
   return (
     <section className="max-w-5xl mx-auto px-4 pb-8 pt-10">
       <div className="rounded-3xl border border-green-500/30 bg-green-500/5 px-8 py-10 text-center relative overflow-hidden">
