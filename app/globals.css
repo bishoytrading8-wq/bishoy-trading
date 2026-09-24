@@ -84,3 +84,33 @@ html.light .bg-white { box-shadow: inset 0 0 0 1px rgba(15,23,42,.12); }
 
 html.light ::-webkit-scrollbar-track { background: #eef2f7; }
 html.light ::-webkit-scrollbar-thumb { background: #cbd5e1; }
+
+/* ═══ ✨ أنيميشن الظهور التدريجي للأقسام ═══ */
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(24px) scale(.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-rise-in { animation: rise-in .6s cubic-bezier(.22,1,.36,1) both; }
+
+/* ═══ 🌀 دوران بطيء للحلقات حوالين اللوجو ═══ */
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.animate-spin-slow { animation: spin-slow 24s linear infinite; }
+.animate-spin-slower { animation: spin-slow 40s linear infinite reverse; }
+
+/* ═══ 💫 نبض هادئ للكلمات الرئيسية ═══ */
+@keyframes glow-text {
+  0%, 100% { text-shadow: 0 0 24px rgba(249,115,22,.25); }
+  50% { text-shadow: 0 0 42px rgba(249,115,22,.5); }
+}
+.animate-glow-text { animation: glow-text 4s ease-in-out infinite; }
+
+/* احترام تقليل الحركة للي عايز ثبات */
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise-in, .animate-spin-slow, .animate-spin-slower,
+  .animate-glow-text, .animate-float, .animate-float-slow, .animate-pulse-glow {
+    animation: none !important;
+  }
+}
