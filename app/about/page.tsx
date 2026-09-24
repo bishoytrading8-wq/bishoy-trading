@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CONTACT, getAllProducts } from "../products-data";
+import { countProducts } from "../lib/catalog";
 import OpenAuthButton from "../components/OpenAuthButton";
 
 export const metadata: Metadata = {
@@ -11,12 +11,12 @@ export const metadata: Metadata = {
 const FEATURES = [
   { icon: "🏆", title: "خبرة في السوق", desc: "سنوات من التعامل المباشر مع التجار والعملاء" },
   { icon: "🔍", title: "انتقاء دقيق", desc: "كل منتج بنختبره ونتأكد من جودته قبل العرض" },
-  { icon: "⚖️", title: "سعر عادل", desc: "سعر الجملة للجميع — بدون تعقيد" },
+  { icon: "⚖️", title: "سعر عادل", desc: "أسعار منافسة تناسب الجميع" },
   { icon: "📞", title: "تواصل مباشر", desc: "تليفون وواتساب — ورد سريع على كل استفسار" },
 ];
 
-export default function AboutPage() {
-  const total = getAllProducts().length;
+export default async function AboutPage() {
+  const total = await countProducts();
   return (
     <div className="max-w-5xl mx-auto px-4 lg:px-8 py-12 lg:py-16">
       <div className="text-center">
@@ -26,13 +26,13 @@ export default function AboutPage() {
 
       <div className="mt-10 rounded-3xl bg-[#101a30] border border-white/10 p-8 leading-relaxed text-white/70">
         <p>
-          بدأت <span className="text-orange-400 font-bold">{CONTACT.brand}</span> بفكرة بسيطة: إن كل بيت ومحل في مصر يستاهل
+          بدأت <span className="text-orange-400 font-bold">شركة بيشوي للتجارة والتوريدات</span> بفكرة بسيطة: إن كل بيت ومحل في مصر يستاهل
           مستلزمات بجودة عالية بسعر مناسب — من غير لف ودوران. اليوم بنوفر مجموعة متكاملة من
           الموايت والشفاطات والأغلفة الديكور والبلورات والمراوح والضفاير، وبنخدم عملاءنا في كل محافظات مصر.
         </p>
         <p className="mt-4">
-          إحنا بنشتغل مباشر — من غير وسيط — عشان نضمن أفضل سعر وأسرع استجابة، وبنوفر أسعار الجملة
-          لأعضاء موقعنا بشكل كامل ومعلن.
+          إحنا بنشتغل مباشر — من غير وسيط — عشان نضمن أفضل سعر وأسرع استجابة، وبنوفر أسعارنا
+          كاملة لأعضاء موقعنا بشكل معلن وواضح.
         </p>
       </div>
 
@@ -57,9 +57,9 @@ export default function AboutPage() {
 
       <div className="mt-10 rounded-3xl border border-orange-500/30 bg-orange-500/5 p-8 text-center">
         <h2 className="text-2xl font-black">جاهز تتعامل معانا؟ 🤝</h2>
-        <p className="text-sm text-white/60 mt-2">سجّل عضويتك المجانية وشوف الأسعار كاملة — أو كلمنا مباشرة</p>
+        <p className="text-sm text-white/60 mt-2">سجّل الدخول لمعرفة أسعارنا كاملة — أو كلمنا مباشرة</p>
         <div className="flex gap-3 justify-center mt-5 flex-wrap">
-          <OpenAuthButton mode="register" className="bg-orange-500 hover:bg-orange-400 px-8 py-3 rounded-xl font-extrabold transition">✨ عضوية مجانية</OpenAuthButton>
+          <OpenAuthButton mode="register" className="bg-orange-500 hover:bg-orange-400 px-8 py-3 rounded-xl font-extrabold transition">✨ حساب جديد مجاني</OpenAuthButton>
           <Link href="/contact" className="border border-white/15 hover:bg-white/5 px-8 py-3 rounded-xl font-bold transition">📞 تواصل معنا</Link>
         </div>
       </div>
