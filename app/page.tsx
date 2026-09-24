@@ -13,6 +13,18 @@ const WHY = [
   { icon: "🤝", title: "تعامل مباشر", desc: "واتساب وتليفون — بدون وسيط" },
 ];
 
+// 🎈 مواقع الشارات حوالين اللوجو — بتتوزع تلقائي حسب عدد الأقسام
+const ORBITS = [
+  "top-6 right-4",
+  "top-24 left-0",
+  "bottom-24 right-0",
+  "bottom-6 left-8",
+  "top-2 left-1/2",
+  "bottom-16 right-1/3",
+  "top-1/3 -left-4",
+  "bottom-2 right-1/4",
+];
+
 export default async function Home() {
   const [cats, counts, total] = await Promise.all([
     getCategories(),
@@ -34,7 +46,7 @@ export default async function Home() {
               كل <span className="text-orange-400 animate-glow-text">مستلزمات بيتك</span> ومحلك<br />تحت سقف واحد
             </h1>
             <p className="text-white/60 leading-relaxed max-w-xl mx-auto lg:mx-0 animate-rise-in" style={{ animationDelay: "240ms" }}>
-              موايت • شفاطات مطابخ • أغلفة ديكور • بلورات • مراوح • ضفاير — جودة عالية وأسعار منافسة لكل بيت ومحل في مصر.
+              {cats.map((c) => c.name).join(" • ")} — جودة عالية وأسعار منافسة لكل بيت ومحل في مصر.
             </p>
             <div className="flex gap-3 justify-center lg:justify-start flex-wrap animate-rise-in" style={{ animationDelay: "360ms" }}>
               <a href="#categories" className="bg-orange-500 hover:bg-orange-400 px-8 py-3.5 rounded-xl font-extrabold transition shadow-lg shadow-orange-500/25">🛒 تصفح الأقسام</a>
@@ -50,21 +62,30 @@ export default async function Home() {
             </div>
           </div>
 
-          {/* اللوجو بحلقات بتلف + شارات طايرة */}
-          <div className="relative hidden lg:block h-[420px]">
-            <div className="absolute inset-0 m-auto w-80 h-80 rounded-full bg-orange-500/20 blur-3xl animate-pulse-glow" />
-            <div className="absolute inset-0 m-auto w-96 h-96 rounded-full border border-dashed border-white/10 animate-spin-slow" />
-            <div className="absolute inset-0 m-auto w-80 h-80 rounded-full border border-orange-500/20 animate-spin-slower" />
-            <Image src="/logo.jpeg" alt="شعار شركة بيشوي للتجارة والتوريدات" width={230} height={230} className="absolute inset-0 m-auto rounded-full ring-4 ring-orange-500/50 shadow-2xl animate-float" />
-            <span className="absolute top-6 right-4 animate-float rounded-full bg-[#101a30] border border-white/10 px-4 py-2 text-sm font-bold shadow-xl">🌀 شفاطات مطابخ</span>
-            <span className="absolute top-24 left-0 animate-float-slow rounded-full bg-[#101a30] border border-white/10 px-4 py-2 text-sm font-bold shadow-xl">💎 بلورات</span>
-            <span className="absolute bottom-24 right-0 animate-float-slow rounded-full bg-[#101a30] border border-white/10 px-4 py-2 text-sm font-bold shadow-xl">🌬️ مراوح</span>
-            <span className="absolute bottom-6 left-8 animate-float rounded-full bg-[#101a30] border border-white/10 px-4 py-2 text-sm font-bold shadow-xl">💧 موايت</span>
+          {/* 🎈 اللوجو + حلقات بتلف + شارات الأقسام الحية — من قاعدة البيانات */}
+          <div className="relative h-[380px] sm:h-[420px]">
+            <div className="absolute inset-0 m-auto w-64 h-64 sm:w-80 sm:h-80 rounded-full bg-orange-500/20 blur-3xl animate-pulse-glow" />
+            <div className="absolute inset-0 m-auto w-80 h-80 sm:w-96 sm:h-96 rounded-full border border-dashed border-white/10 animate-spin-slow" />
+            <div className="absolute inset-0 m-auto w-64 h-64 sm:w-80 sm:h-80 rounded-full border border-orange-500/20 animate-spin-slower" />
+            <Image src="/logo.jpeg" alt="شعار شركة بيشوي للتجارة والتوريدات" width={180} height={180} className="absolute inset-0 m-auto rounded-full ring-4 ring-orange-500/50 shadow-2xl animate-float sm:!w-[210px] sm:!h-[210px]" />
+
+            {/* 🏷️ شارات الأقسام — كل قسم شارة بإيموجيه واسمه، بتتوزع لوحدها */}
+            {cats.map((c, i) => (
+              <Link
+                key={c.slug}
+                href={`/category/${c.slug}`}
+                className={`absolute ${ORBITS[i % ORBITS.length]} animate-float-slow rounded-full bg-[#101a30] border border-white/10 hover:border-orange-500/50 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-bold shadow-xl hover:scale-110 hover:text-orange-400 transition-all duration-300 animate-rise-in`}
+                style={{ animationDelay: `${600 + i * 150}ms` }}
+                title={`روح لقسم ${c.name}`}
+              >
+                <span className="inline-block mr-1 group-hover:scale-110">{c.emoji}</span> {c.name}
+              </Link>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* ═══════════ الأقسام — من قاعدة البيانات + ظهور متدرج ═══════════ */}
+      {/* ═══════════ الأقسام — ظهور متدرج ═══════════ */}
       <section id="categories" className="max-w-7xl mx-auto px-4 lg:px-8 py-16 scroll-mt-24">
         <div className="text-center mb-10">
           <h2 className="text-3xl lg:text-4xl font-black">أقسامنا <span className="text-orange-400">الرئيسية</span></h2>
