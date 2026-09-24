@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { CONTACT, WHATSAPP_LINK } from "../../products-data";
-import { getCategory } from "../../products-data";
-import { getDbProduct, getSimilar, priceInfo } from "../../lib/catalog";
+import { getDbProduct, getSimilar, priceInfo, getCategoryBySlug } from "../../lib/catalog";
+import { getSettings, waLink } from "../../lib/settings";
 import ProductGallery from "../../components/ProductGallery";
 import DbProductCard from "../../components/DbProductCard";
 import PriceGate from "../../components/PriceGate";
@@ -21,7 +20,8 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
   const product = await getDbProduct(id);
   if (!product) notFound();
 
-  const cat = getCategory(product.category_slug);
+  const cat = await getCategoryBySlug(product.category_slug);
+  const s = await getSettings();
   const { final, hasDiscount, percentOff } = priceInfo(product);
   const similar = await getSimilar(product, 4);
 
@@ -70,8 +70,8 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
           <div className="mt-6"><PriceGate price={final} /></div>
 
           <div className="flex gap-3 mt-6 flex-wrap">
-            <a href={`tel:${CONTACT.mobile}`} className="bg-orange-500 hover:bg-orange-400 px-7 py-3 rounded-xl font-extrabold transition shadow-lg shadow-orange-500/20">📞 اتصل بنا</a>
-            <a href={WHATSAPP_LINK(`مرحبًا 👋 مهتم بـ ${product.name}`)} target="_blank" className="border border-green-500/40 text-green-400 hover:bg-green-500/10 px-7 py-3 rounded-xl font-bold transition">💬 واتساب</a>
+            <a href={`tel:${s.mobile}`} className="bg-orange-500 hover:bg-orange-400 px-7 py-3 rounded-xl font-extrabold transition shadow-lg shadow-orange-500/20">📞 اتصل بنا</a>
+            <a href={waLink(s.whatsapp, `مرحبًا 👋 مهتم بـ ${product.name}`)} target="_blank" className="border border-green-500/40 text-green-400 hover:bg-green-500/10 px-7 py-3 rounded-xl font-bold transition">💬 واتساب</a>
           </div>
         </div>
       </div>
@@ -83,7 +83,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
             {product.brand?.name && <span className="text-sm text-white/40 font-bold mr-2">(من نفس الماركة: {product.brand.name})</span>}
           </h2>
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {similar.map((s) => <DbProductCard key={s.id} product={s} />)}
+            {similar.map((x) => <DbProductCard key={x.id} product={x} />)}
           </div>
         </section>
       )}

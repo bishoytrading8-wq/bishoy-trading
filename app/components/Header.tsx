@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { CONTACT } from "../products-data";
+import { getSettings, type SiteSettings } from "../lib/settings";
 import { getCategories, type DbCategory } from "../lib/catalog";
 import { useAuth } from "../lib/AuthProvider";
 import ThemeToggle from "./ThemeToggle";
@@ -22,8 +23,24 @@ export default function Header() {
   const [catsOpen, setCatsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [cats, setCats] = useState<DbCategory[]>([]);
+  const [s, setS] = useState<SiteSettings>({
+    landline: CONTACT.landline,
+    mobile: CONTACT.mobile,
+    whatsapp: CONTACT.whatsapp,
+    hours: CONTACT.hours,
+    address: CONTACT.address,
+    maps_url: CONTACT.maps_url,
+    website: CONTACT.website,
+    facebook: CONTACT.facebook,
+    telegram: "",
+    instagram: "",
+    linkedin: "",
+  });
 
-  useEffect(() => { getCategories().then(setCats); }, []);
+  useEffect(() => {
+    getSettings().then(setS);
+    getCategories().then(setCats);
+  }, []);
   useEffect(() => { setOpen(false); setCatsOpen(false); }, [pathname]);
   useEffect(() => {
     const h = () => setScrolled(window.scrollY > 8);
@@ -41,10 +58,10 @@ export default function Header() {
 
   return (
     <header className={`sticky top-0 z-50 border-b border-white/10 transition-all ${scrolled ? "bg-[#0b1220]/95 backdrop-blur-lg shadow-lg shadow-black/40" : "bg-[#0b1220]/70 backdrop-blur"}`}>
-      {/* الشريط العلوي */}
+      {/* الشريط العلوي — من الإعدادات */}
       <div className="hidden md:flex items-center justify-between text-xs text-white/50 border-b border-white/5 px-4 lg:px-8 py-1.5 max-w-7xl mx-auto">
-        <p>📞 <span dir="ltr">{CONTACT.phones.join(" - ")}</span></p>
-        <p>🕗 {CONTACT.hours}</p>
+        <p>☎️ <span dir="ltr">{s.landline}</span> • 📱 <span dir="ltr">{s.mobile}</span></p>
+        <p>🕗 {s.hours}</p>
       </div>
 
       <div className="flex items-center justify-between gap-4 px-4 lg:px-8 py-3 max-w-7xl mx-auto">
@@ -112,7 +129,6 @@ export default function Header() {
       {/* قايمة الموبايل */}
       {open && (
         <div className="lg:hidden border-t border-white/10 bg-[#0b1220]/95 backdrop-blur-lg px-4 py-4 max-h-[70vh] overflow-y-auto">
-          {/* مظهر الموقع */}
           <div className="flex items-center justify-between px-1 pb-3">
             <span className="text-xs text-white/40 font-bold">مظهر الموقع</span>
             <ThemeToggle />
