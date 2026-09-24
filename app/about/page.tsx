@@ -57,7 +57,7 @@ export default async function AboutPage() {
 
       <div className="mt-10 rounded-3xl border border-orange-500/30 bg-orange-500/5 p-8 text-center">
         <h2 className="text-2xl font-black">جاهز تتعامل معانا؟ 🤝</h2>
-        <p className="text-sm text-white/60 mt-2">سجّل الدخول لمعرفة أسعارنا كاملة — أو كلمنا مباشرة</p>
+        <p className="text-sm text-white/60 mt-2">سجّل حسابك المجاني لتنفيذ عمليات الشراء بسهولة — أو كلمنا مباشرة</p>
         <div className="flex gap-3 justify-center mt-5 flex-wrap">
           <OpenAuthButton mode="register" className="bg-orange-500 hover:bg-orange-400 px-8 py-3 rounded-xl font-extrabold transition">✨ حساب جديد مجاني</OpenAuthButton>
           <Link href="/contact" className="border border-white/15 hover:bg-white/5 px-8 py-3 rounded-xl font-bold transition">📞 تواصل معنا</Link>

@@ -9,7 +9,7 @@ export default function MembersBanner() {
 
   return (
     <div className="rounded-2xl border border-orange-500/30 bg-orange-500/5 px-5 py-4 flex flex-wrap items-center justify-between gap-3">
-      <p className="text-sm font-bold">🔒 لمعرفة أسعار المنتجات — <span className="text-orange-400">سجّل الدخول مجانًا</span></p>
+      <p className="text-sm font-bold">🛒 عاجبك منتج؟ <span className="text-orange-400">سجّل الدخول لتنفيذ عملية الشراء</span> — مجانًا</p>
       <OpenAuthButton mode="register" className="bg-orange-500 hover:bg-orange-400 px-5 py-2 rounded-lg text-sm font-bold transition">حساب جديد</OpenAuthButton>
     </div>
   );
