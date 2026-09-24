@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+body {
+  background: #0a1628;
+  color: #ffffff;
+  font-family: var(--font-cairo), system-ui, sans-serif;
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-14px); }
+}
+.animate-float { animation: float 6s ease-in-out infinite; }
+.animate-float-slow { animation: float 9s ease-in-out infinite; }
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.9; }
+}
+.animate-pulse-glow { animation: pulse-glow 4s ease-in-out infinite; }
