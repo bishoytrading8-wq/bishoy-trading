@@ -11,6 +11,7 @@ const inputCls = "w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 
 type Staff = {
   email: string;
   name: string;
+  phone: string;
   can_manage_products: boolean;
   can_view_clients: boolean;
   can_add_clients: boolean;
@@ -26,6 +27,7 @@ export default function StaffPage() {
   const [staff, setStaff] = useState<Staff[]>([]);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
   const [perms, setPerms] = useState({ products: true, viewClients: true, addClients: true });
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
@@ -45,10 +47,12 @@ export default function StaffPage() {
     setMsg("");
     const em = email.trim().toLowerCase();
     if (!em.includes("@")) return setMsg("اكتب إيميل صحيح");
+    if (phone && !/^01[0-9]{9}$/.test(phone)) return setMsg("رقم التليفون لازم 11 رقم يبدأ بـ 01 (أو سيبه فاضي)");
     setBusy(true);
     const { error } = await supabase.from("staff_members").insert({
       email: em,
       name: name.trim(),
+      phone: phone.trim(),
       can_manage_products: perms.products,
       can_view_clients: perms.viewClients,
       can_add_clients: perms.addClients,
@@ -56,7 +60,8 @@ export default function StaffPage() {
     setBusy(false);
     if (error) return setMsg(error.message.includes("duplicate") ? "الإيميل ده مضاف قبل كده — عدّل صلاحياته من الجدول تحت" : "حصل خطأ — جرّب تاني");
     setMsg(`✓ اتضاف الموظف — يقدر يسجل دخول بالموقع بإيميل ${em} وهيلاقي صلاحياته فورًا`);
-    setEmail(""); setName(""); setPerms({ products: true, viewClients: true, addClients: true });
+    setEmail(""); setName(""); setPhone("");
+    setPerms({ products: true, viewClients: true, addClients: true });
     load();
   };
 
@@ -72,10 +77,9 @@ export default function StaffPage() {
       redirectTo: window.location.origin + "/reset-password",
     });
     if (error) { setMsg("فشل الإرسال: " + error.message); return; }
-    setMsg(`✓ اتبعت لينك تغيير كلمة السر على ${s.email} — هيفتح إيميله ويختار كلمة جديدة`);
+    setMsg(`✓ اتبعت لينك تغيير كلمة السر على ${s.email}`);
   };
 
-  // ⚙️ حفظ اسم الموظف بعد التعديل
   const saveName = async (s: Staff) => {
     const { error } = await supabase.from("staff_members").update({ name: editName.trim() }).eq("email", s.email);
     if (error) { setMsg("فشل التعديل: " + error.message); return; }
@@ -90,12 +94,12 @@ export default function StaffPage() {
     load();
   };
 
-  // 📥 تصدير Excel
+  // 📥 تصدير Excel — بالتليفون
   const exportStaff = () => {
     exportCSV("staff.csv",
-      ["الاسم","الإيميل","إدارة المنتجات","عرض العملاء","إضافة عملاء","الحالة","تاريخ الإضافة"],
+      ["الاسم","الإيميل","التليفون","إدارة المنتجات","عرض العملاء","إضافة عملاء","الحالة","تاريخ الإضافة"],
       staff.map((s) => [
-        s.name || "", s.email,
+        s.name || "", s.email, s.phone || "",
         s.can_manage_products ? "نعم" : "لا",
         s.can_view_clients ? "نعم" : "لا",
         s.can_add_clients ? "نعم" : "لا",
@@ -131,7 +135,7 @@ export default function StaffPage() {
       <div className="flex items-center justify-between flex-wrap gap-3 mb-8">
         <div>
           <h1 className="text-3xl font-black">🧑‍💼 الموظفين</h1>
-          <p className="text-white/50 text-sm mt-1">ضيف إيميل الموظف واختار صلاحياته — هيلاقيها مستنياها أول ما يسجل دخول</p>
+          <p className="text-white/50 text-sm mt-1">بيانات كاملة: إيميل + اسم + تليفون + صلاحيات</p>
         </div>
         <div className="flex items-center gap-2">
           {staff.length > 0 && (
@@ -145,16 +149,20 @@ export default function StaffPage() {
         <div className={`rounded-xl border px-4 py-3 text-sm font-bold mb-6 ${msg.startsWith("✓") ? "bg-green-500/10 border-green-500/30 text-green-300" : "bg-red-500/10 border-red-500/30 text-red-300"}`}>{msg}</div>
       )}
 
-      {/* فورم الإضافة */}
+      {/* فورم الإضافة — بيانات كاملة */}
       <div className="rounded-3xl bg-[#101a30] border border-white/10 p-6 space-y-4">
-        <div className="grid sm:grid-cols-2 gap-4">
+        <div className="grid sm:grid-cols-3 gap-4">
           <div>
-            <label className="text-xs font-extrabold text-white/70 mb-1.5 block">إيميل الموظف</label>
+            <label className="text-xs font-extrabold text-white/70 mb-1.5 block">إيميل الموظف *</label>
             <input dir="ltr" className={inputCls} placeholder="employee@gmail.com" value={email} onChange={(e) => setEmail(e.target.value)} />
           </div>
           <div>
-            <label className="text-xs font-extrabold text-white/70 mb-1.5 block">اسمه (اختياري)</label>
+            <label className="text-xs font-extrabold text-white/70 mb-1.5 block">اسمه</label>
             <input className={inputCls} placeholder="مثال: محمود" value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div>
+            <label className="text-xs font-extrabold text-white/70 mb-1.5 block">تليفونه</label>
+            <input inputMode="numeric" dir="ltr" className={inputCls} placeholder="01xxxxxxxxx" value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 11))} />
           </div>
         </div>
 
@@ -202,7 +210,10 @@ export default function StaffPage() {
                         </span>
                       </p>
                       <p className="text-xs text-white/40 mt-0.5" dir="ltr">{s.email}</p>
-                      <p className="text-xs text-white/50 mt-1">{permLabel(s)} • 🗓️ {fmtDate(s.created_at)}</p>
+                      <p className="text-xs text-white/50 mt-1">
+                        {s.phone && <>📞 <span dir="ltr">{s.phone}</span> • </>}
+                        {permLabel(s)} • 🗓️ {fmtDate(s.created_at)}
+                      </p>
                     </>
                   )}
                 </div>

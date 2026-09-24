@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { CATEGORIES, CONTACT } from "../products-data";
+import { CONTACT } from "../products-data";
+import { getCategories, type DbCategory } from "../lib/catalog";
 import { useAuth } from "../lib/AuthProvider";
+import ThemeToggle from "./ThemeToggle";
 
 const NAV = [
   { href: "/", label: "الرئيسية" },
@@ -19,7 +21,9 @@ export default function Header() {
   const [open, setOpen] = useState(false);
   const [catsOpen, setCatsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [cats, setCats] = useState<DbCategory[]>([]);
 
+  useEffect(() => { getCategories().then(setCats); }, []);
   useEffect(() => { setOpen(false); setCatsOpen(false); }, [pathname]);
   useEffect(() => {
     const h = () => setScrolled(window.scrollY > 8);
@@ -31,7 +35,6 @@ export default function Header() {
   const linkCls = (href: string) =>
     `px-4 py-2 rounded-lg text-sm font-bold transition ${isActive(href) ? "text-orange-400 bg-orange-500/10" : "text-white/80 hover:text-white hover:bg-white/5"}`;
 
-  // 🏷️ شارة الدور — بتظهر جنب الإيميل
   const roleBadge =
     role?.kind === "owner" ? "👑 مالك" :
     role?.kind === "staff" ? "🧑‍💼 موظف" : null;
@@ -64,7 +67,7 @@ export default function Header() {
             {catsOpen && (
               <div className="absolute top-full right-0 pt-2 w-56">
                 <div className="rounded-2xl bg-[#101a30] border border-white/10 shadow-2xl overflow-hidden p-2">
-                  {CATEGORIES.map((c) => (
+                  {cats.map((c) => (
                     <Link key={c.slug} href={`/category/${c.slug}`} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition ${pathname === `/category/${c.slug}` ? "text-orange-400 bg-orange-500/10" : "text-white/80 hover:bg-white/5"}`}>
                       <span className="text-lg">{c.emoji}</span> {c.name}
                     </Link>
@@ -77,9 +80,9 @@ export default function Header() {
 
         {/* الدخول — ديسكتوب */}
         <div className="hidden lg:flex items-center gap-2">
+          <ThemeToggle />
           {loading ? <span className="w-24 h-9 rounded-lg bg-white/5 animate-pulse" />
             : user ? (<>
-              {/* ⚙️ زرار الإدارة — بيظهر للمالك والموظفين بس */}
               {role && role.kind !== "customer" && (
                 <Link href="/admin" className="px-4 py-2 rounded-lg bg-orange-500/15 border border-orange-500/40 text-orange-300 hover:bg-orange-500/25 text-sm font-bold transition">
                   ⚙️ الإدارة
@@ -109,12 +112,18 @@ export default function Header() {
       {/* قايمة الموبايل */}
       {open && (
         <div className="lg:hidden border-t border-white/10 bg-[#0b1220]/95 backdrop-blur-lg px-4 py-4 max-h-[70vh] overflow-y-auto">
+          {/* مظهر الموقع */}
+          <div className="flex items-center justify-between px-1 pb-3">
+            <span className="text-xs text-white/40 font-bold">مظهر الموقع</span>
+            <ThemeToggle />
+          </div>
+
           {NAV.map((l) => (
             <Link key={l.href} href={l.href} className={`block px-4 py-3 rounded-xl font-bold transition ${isActive(l.href) ? "text-orange-400 bg-orange-500/10" : "text-white/80 hover:bg-white/5"}`}>{l.label}</Link>
           ))}
           <p className="text-xs text-white/40 font-bold pt-4 pb-1 px-4">الأقسام</p>
           <div className="grid grid-cols-2 gap-2">
-            {CATEGORIES.map((c) => (
+            {cats.map((c) => (
               <Link key={c.slug} href={`/category/${c.slug}`} className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-bold transition ${pathname === `/category/${c.slug}` ? "text-orange-400 bg-orange-500/10" : "text-white/80 bg-white/5 hover:bg-white/10"}`}>
                 <span>{c.emoji}</span> {c.name}
               </Link>
