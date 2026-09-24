@@ -1,10 +1,26 @@
 @import "tailwindcss";
 
-body {
-  background: #0a1628;
-  color: #ffffff;
-  font-family: var(--font-cairo), system-ui, sans-serif;
+:root {
+  --navy: #0b1220;
+  --navy-2: #101a30;
+  --orange: #f97316;
 }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-cairo), "Cairo", sans-serif;
+  background: var(--navy);
+  color: #fff;
+}
+
+::selection { background: var(--orange); color: var(--navy); }
+
+::-webkit-scrollbar { width: 10px; }
+::-webkit-scrollbar-track { background: var(--navy); }
+::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: var(--orange); }
+
 @keyframes float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-14px); }
@@ -68,16 +84,3 @@ html.light .bg-white { box-shadow: inset 0 0 0 1px rgba(15,23,42,.12); }
 
 html.light ::-webkit-scrollbar-track { background: #eef2f7; }
 html.light ::-webkit-scrollbar-thumb { background: #cbd5e1; }
-
-/* ═══ 🎨 الخط الفاخر: العناوين بخط البراند ═══ */
-h1, h2, h3 {
-  font-family: var(--font-display), var(--font-cairo), sans-serif;
-  letter-spacing: -0.01em;
-}
-
-/* مسافات تنفس أحسن في العناوين الكبيرة */
-h1 { line-height: 1.35; }
-h2 { line-height: 1.4; }
-
-/* الأرقام والإيموجي في العناوين بتتظبط تلقائيًا */
-h1, h2, h3 { text-wrap: balance; }
