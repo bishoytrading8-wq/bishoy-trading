@@ -13,18 +13,18 @@ const WHY = [
   { icon: "🤝", title: "تعامل مباشر", desc: "واتساب وتليفون — بدون وسيط" },
 ];
 
-// 🎈 مواقع الشارات حوالين اللوجو — بتتوزع تلقائي حسب عدد الأقسام
-// (مرتبة على مدار الساعة: فوق يمين → فوق شمال → تحت شمال → تحت يمين...)
-const ORBITS = [
-  "top-8 right-6 sm:right-10",
-  "top-1/4 -left-2 sm:left-6",
-  "bottom-1/4 right-0 sm:right-2",
-  "bottom-10 left-4 sm:left-14",
-  "top-2 left-1/2 -translate-x-1/2",
-  "bottom-0 right-1/3",
-  "top-1/3 -right-3",
-  "bottom-12 left-1/3",
-];
+// 🎈 توزيع رياضي على محيط دايرة حوالين اللوجو
+// مهما كان عدد الأقسام — بتتوزع بانتظام ومفيش شارة بتتقطع أو تتراكب
+function orbitPosition(index: number, total: number) {
+  // نبدأ من فوق (-90 درجة) ونلف مع عقارب الساعة
+  const angle = (index / total) * 2 * Math.PI - Math.PI / 2;
+  // بيضاوية آمنة: مضمونة جوه الحدود على اللاب والموبايل
+  const radiusX = 36; // % عرضي
+  const radiusY = 45; // % رأسي
+  const x = 50 + radiusX * Math.cos(angle);
+  const y = 50 + radiusY * Math.sin(angle);
+  return { left: `${x}%`, top: `${y}%`, transform: "translate(-50%, -50%)" };
+}
 
 export default async function Home() {
   const [cats, counts, total] = await Promise.all([
@@ -69,31 +69,34 @@ export default async function Home() {
             </div>
           </div>
 
-          {/* 🎈 اللوجو + الحلقات + شارات الأقسام الحية — كلها من قاعدة البيانات */}
-          <div className="relative h-[360px] sm:h-[440px]">
-            {/* الهالات */}
+          {/* 🎈 اللوجو + الحلقات + شارات الأقسام — توزيع رياضي مضمون */}
+          <div className="relative h-[380px] sm:h-[460px]">
+            {/* الهالة */}
             <div className="absolute inset-0 m-auto w-56 h-56 sm:w-72 sm:h-72 rounded-full bg-orange-500/20 blur-3xl animate-pulse-glow" />
-            {/* الحلقة الكبيرة المنقطة — بتلف */}
+            {/* الحلقة المنقطة الكبيرة — بتلف */}
             <div className="absolute inset-0 m-auto w-72 h-72 sm:w-96 sm:h-96 rounded-full border border-dashed border-white/10 animate-spin-slow" />
-            {/* الحلقة الداخلية الصلبة */}
+            {/* الحلقة الداخلية */}
             <div className="absolute inset-0 m-auto w-60 h-60 sm:w-80 sm:h-80 rounded-full border-2 border-orange-500/30 animate-spin-slower" />
             {/* اللوجو — حاوم */}
-            <div className="absolute inset-0 m-auto w-48 h-48 sm:w-64 sm:h-64 rounded-full bg-white ring-4 ring-orange-500/60 shadow-2xl animate-float overflow-hidden">
+            <div className="absolute inset-0 m-auto w-44 h-44 sm:w-64 sm:h-64 rounded-full bg-white ring-4 ring-orange-500/60 shadow-2xl animate-float overflow-hidden">
               <Image src="/logo.jpeg" alt="شعار شركة بيشوي للتجارة والتوريدات" width={256} height={256} className="w-full h-full object-cover rounded-full" />
             </div>
 
-            {/* 🏷️ شارات الأقسام — من قاعدة البيانات، تتوزع لوحدها، قابلة للضغط */}
-            {cats.map((c, i) => (
-              <Link
-                key={c.slug}
-                href={`/category/${c.slug}`}
-                className={`absolute ${ORBITS[i % ORBITS.length]} animate-float-slow animate-rise-in rounded-full bg-white text-[#0f172a] shadow-lg hover:shadow-xl border border-orange-500/30 hover:border-orange-500/70 px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-extrabold hover:scale-110 transition-all duration-300`}
-                style={{ animationDelay: `${600 + i * 150}ms` }}
-                title={`روح لقسم ${c.name}`}
-              >
-                <span className="mr-1">{c.emoji}</span> {c.name}
-              </Link>
-            ))}
+            {/* 🏷️ شارات الأقسام — موزعة رياضيًا على الدايرة */}
+            {cats.map((c, i) => {
+              const pos = orbitPosition(i, cats.length);
+              return (
+                <Link
+                  key={c.slug}
+                  href={`/category/${c.slug}`}
+                  className="absolute animate-float-slow animate-rise-in rounded-full bg-white text-[#0f172a] shadow-lg hover:shadow-xl border border-orange-500/30 hover:border-orange-500/70 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-extrabold hover:scale-110 hover:z-10 transition-all duration-300 whitespace-nowrap"
+                  style={{ ...pos, animationDelay: `${600 + i * 150}ms`, animationDuration: `${6 + (i % 3)}s` }}
+                  title={`روح لقسم ${c.name}`}
+                >
+                  <span className="mr-1">{c.emoji}</span> {c.name}
+                </Link>
+              );
+            })}
           </div>
         </div>
       </section>
