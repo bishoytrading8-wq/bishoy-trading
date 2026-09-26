@@ -14,15 +14,16 @@ const WHY = [
 ];
 
 // 🎈 مواقع الشارات حوالين اللوجو — بتتوزع تلقائي حسب عدد الأقسام
+// (مرتبة على مدار الساعة: فوق يمين → فوق شمال → تحت شمال → تحت يمين...)
 const ORBITS = [
-  "top-6 right-4",
-  "top-24 left-0",
-  "bottom-24 right-0",
-  "bottom-6 left-8",
-  "top-2 left-1/2",
-  "bottom-16 right-1/3",
-  "top-1/3 -left-4",
-  "bottom-2 right-1/4",
+  "top-8 right-6 sm:right-10",
+  "top-1/4 -left-2 sm:left-6",
+  "bottom-1/4 right-0 sm:right-2",
+  "bottom-10 left-4 sm:left-14",
+  "top-2 left-1/2 -translate-x-1/2",
+  "bottom-0 right-1/3",
+  "top-1/3 -right-3",
+  "bottom-12 left-1/3",
 ];
 
 export default async function Home() {
@@ -39,7 +40,7 @@ export default async function Home() {
         <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-orange-500/15 blur-3xl animate-pulse-glow" />
         <div className="absolute bottom-0 right-0 w-80 h-80 rounded-full bg-blue-500/10 blur-3xl" />
 
-        <div className="max-w-7xl mx-auto px-4 lg:px-8 py-16 lg:py-24 grid lg:grid-cols-2 gap-12 items-center relative">
+        <div className="max-w-7xl mx-auto px-4 lg:px-8 py-14 lg:py-20 grid lg:grid-cols-2 gap-10 items-center relative">
           <div className="text-center lg:text-right space-y-6">
             <span className="animate-rise-in inline-flex items-center gap-2 rounded-full border border-orange-500/40 bg-orange-500/10 px-4 py-1.5 text-xs font-bold text-orange-300">✨ جودة مضمونة • أسعار منافسة • توريد لكل مصر</span>
             <h1 className="text-4xl lg:text-6xl font-black leading-[1.25] animate-rise-in" style={{ animationDelay: "120ms" }}>
@@ -53,32 +54,44 @@ export default async function Home() {
               <Link href="/contact" className="border border-white/15 hover:bg-white/5 px-8 py-3.5 rounded-xl font-bold transition">📞 تواصل معنا</Link>
             </div>
             <div className="flex gap-8 justify-center lg:justify-start pt-4 animate-rise-in" style={{ animationDelay: "480ms" }}>
-              {[["6", "أقسام رئيسية"], [`${total}+`, "منتج متاح"], ["27", "محافظة نخدمها"]].map(([n, l]) => (
-                <div key={l}>
-                  <p className="text-3xl font-black text-orange-400">{n}</p>
-                  <p className="text-xs text-white/50 mt-1">{l}</p>
-                </div>
-              ))}
+              <div>
+                <p className="text-3xl font-black text-orange-400">{cats.length}</p>
+                <p className="text-xs text-white/50 mt-1">أقسام رئيسية</p>
+              </div>
+              <div>
+                <p className="text-3xl font-black text-orange-400">{total}+</p>
+                <p className="text-xs text-white/50 mt-1">منتج متاح</p>
+              </div>
+              <div>
+                <p className="text-3xl font-black text-orange-400">27</p>
+                <p className="text-xs text-white/50 mt-1">محافظة نخدمها</p>
+              </div>
             </div>
           </div>
 
-          {/* 🎈 اللوجو + حلقات بتلف + شارات الأقسام الحية — من قاعدة البيانات */}
-          <div className="relative h-[380px] sm:h-[420px]">
-            <div className="absolute inset-0 m-auto w-64 h-64 sm:w-80 sm:h-80 rounded-full bg-orange-500/20 blur-3xl animate-pulse-glow" />
-            <div className="absolute inset-0 m-auto w-80 h-80 sm:w-96 sm:h-96 rounded-full border border-dashed border-white/10 animate-spin-slow" />
-            <div className="absolute inset-0 m-auto w-64 h-64 sm:w-80 sm:h-80 rounded-full border border-orange-500/20 animate-spin-slower" />
-            <Image src="/logo.jpeg" alt="شعار شركة بيشوي للتجارة والتوريدات" width={180} height={180} className="absolute inset-0 m-auto rounded-full ring-4 ring-orange-500/50 shadow-2xl animate-float sm:!w-[210px] sm:!h-[210px]" />
+          {/* 🎈 اللوجو + الحلقات + شارات الأقسام الحية — كلها من قاعدة البيانات */}
+          <div className="relative h-[360px] sm:h-[440px]">
+            {/* الهالات */}
+            <div className="absolute inset-0 m-auto w-56 h-56 sm:w-72 sm:h-72 rounded-full bg-orange-500/20 blur-3xl animate-pulse-glow" />
+            {/* الحلقة الكبيرة المنقطة — بتلف */}
+            <div className="absolute inset-0 m-auto w-72 h-72 sm:w-96 sm:h-96 rounded-full border border-dashed border-white/10 animate-spin-slow" />
+            {/* الحلقة الداخلية الصلبة */}
+            <div className="absolute inset-0 m-auto w-60 h-60 sm:w-80 sm:h-80 rounded-full border-2 border-orange-500/30 animate-spin-slower" />
+            {/* اللوجو — حاوم */}
+            <div className="absolute inset-0 m-auto w-48 h-48 sm:w-64 sm:h-64 rounded-full bg-white ring-4 ring-orange-500/60 shadow-2xl animate-float overflow-hidden">
+              <Image src="/logo.jpeg" alt="شعار شركة بيشوي للتجارة والتوريدات" width={256} height={256} className="w-full h-full object-cover rounded-full" />
+            </div>
 
-            {/* 🏷️ شارات الأقسام — كل قسم شارة بإيموجيه واسمه، بتتوزع لوحدها */}
+            {/* 🏷️ شارات الأقسام — من قاعدة البيانات، تتوزع لوحدها، قابلة للضغط */}
             {cats.map((c, i) => (
               <Link
                 key={c.slug}
                 href={`/category/${c.slug}`}
-                className={`absolute ${ORBITS[i % ORBITS.length]} animate-float-slow rounded-full bg-[#101a30] border border-white/10 hover:border-orange-500/50 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-bold shadow-xl hover:scale-110 hover:text-orange-400 transition-all duration-300 animate-rise-in`}
+                className={`absolute ${ORBITS[i % ORBITS.length]} animate-float-slow animate-rise-in rounded-full bg-white text-[#0f172a] shadow-lg hover:shadow-xl border border-orange-500/30 hover:border-orange-500/70 px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-extrabold hover:scale-110 transition-all duration-300`}
                 style={{ animationDelay: `${600 + i * 150}ms` }}
                 title={`روح لقسم ${c.name}`}
               >
-                <span className="inline-block mr-1 group-hover:scale-110">{c.emoji}</span> {c.name}
+                <span className="mr-1">{c.emoji}</span> {c.name}
               </Link>
             ))}
           </div>
