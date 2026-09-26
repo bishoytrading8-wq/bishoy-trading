@@ -13,7 +13,7 @@ const WHY = [
   { icon: "🤝", title: "تعامل مباشر", desc: "واتساب وتليفون — بدون وسيط" },
 ];
 
-// 🎈 توزيع رياضي على محيط دايرة حوالين اللوجو
+// 🎈 توزيع رياضي على محيط دايرة حوالين اللوجو — مواقع ثابتة أنيقة
 function orbitPosition(index: number, total: number) {
   const angle = (index / total) * 2 * Math.PI - Math.PI / 2;
   const radiusX = 36;
@@ -32,16 +32,16 @@ export default async function Home() {
 
   return (
     <>
-      {/* ═══════════ الهيرو المتحرك ═══════════ */}
+      {/* ═══════════ الهيرو الكلاسيكي الأنيق ═══════════ */}
       <section className="relative overflow-hidden">
-        <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-orange-500/15 blur-3xl animate-pulse-glow" />
+        <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-orange-500/15 blur-3xl" />
         <div className="absolute bottom-0 right-0 w-80 h-80 rounded-full bg-blue-500/10 blur-3xl" />
 
         <div className="max-w-7xl mx-auto px-4 lg:px-8 py-14 lg:py-20 grid lg:grid-cols-2 gap-10 items-center relative">
           <div className="text-center lg:text-right space-y-6">
             <span className="animate-rise-in inline-flex items-center gap-2 rounded-full border border-orange-500/40 bg-orange-500/10 px-4 py-1.5 text-xs font-bold text-orange-300">✨ جودة مضمونة • أسعار منافسة • توريد لكل مصر</span>
             <h1 className="text-4xl lg:text-6xl font-black leading-[1.25] animate-rise-in" style={{ animationDelay: "120ms" }}>
-              كل <span className="text-orange-400 animate-glow-text">مستلزمات بيتك</span> ومحلك<br />تحت سقف واحد
+              كل <span className="text-orange-400">مستلزمات بيتك</span> ومحلك<br />تحت سقف واحد
             </h1>
             <p className="text-white/60 leading-relaxed max-w-xl mx-auto lg:mx-0 animate-rise-in" style={{ animationDelay: "240ms" }}>
               {cats.map((c) => c.name).join(" • ")} — جودة عالية وأسعار منافسة لكل بيت ومحل في مصر.
@@ -66,24 +66,24 @@ export default async function Home() {
             </div>
           </div>
 
-          {/* 🎈 اللوجو + الحلقات + شارات الأقسام — توزيع رياضي مضمون */}
+          {/* 🎈 اللوجو بحافته البرتقالية + حلقتين هاديين + شارات الأقسام بحركة بسيطة */}
           <div className="relative h-[380px] sm:h-[460px]">
             <div className="absolute inset-0 m-auto w-56 h-56 sm:w-72 sm:h-72 rounded-full bg-orange-500/20 blur-3xl animate-pulse-glow" />
-            <div className="absolute inset-0 m-auto w-72 h-72 sm:w-96 sm:h-96 rounded-full border border-dashed border-white/10 animate-spin-slow" />
-            <div className="absolute inset-0 m-auto w-60 h-60 sm:w-80 sm:h-80 rounded-full border-2 border-orange-500/30 animate-spin-slower" />
-            <div className="absolute inset-0 m-auto w-44 h-44 sm:w-64 sm:h-64 rounded-full bg-white ring-4 ring-orange-500/60 shadow-2xl animate-float overflow-hidden">
+            <div className="absolute inset-0 m-auto w-72 h-72 sm:w-96 sm:h-96 rounded-full border border-dashed border-white/10" />
+            <div className="absolute inset-0 m-auto w-60 h-60 sm:w-80 sm:h-80 rounded-full border-2 border-orange-500/30" />
+            <div className="absolute inset-0 m-auto w-44 h-44 sm:w-64 sm:h-64 rounded-full bg-white ring-4 ring-orange-500/60 shadow-2xl overflow-hidden">
               <Image src="/logo.jpeg" alt="شعار شركة بيشوي للتجارة والتوريدات" width={256} height={256} className="w-full h-full object-cover rounded-full" />
             </div>
 
-            {/* 🏷️ شارات الأقسام — موزعة رياضيًا على الدايرة */}
+            {/* 🏷️ شارات الأقسام — من قاعدة البيانات، ثابتة أماكنها، بتحوم بهدوء */}
             {cats.map((c, i) => {
               const pos = orbitPosition(i, cats.length);
               return (
                 <Link
                   key={c.slug}
                   href={`/category/${c.slug}`}
-                  className="absolute animate-float-slow animate-rise-in rounded-full bg-white text-[#0f172a] shadow-lg hover:shadow-xl border border-orange-500/30 hover:border-orange-500/70 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-extrabold hover:scale-110 hover:z-10 transition-all duration-300 whitespace-nowrap"
-                  style={{ ...pos, animationDelay: `${600 + i * 150}ms`, animationDuration: `${6 + (i % 3)}s` }}
+                  className="absolute animate-float-slow rounded-full bg-white text-[#0f172a] shadow-lg hover:shadow-xl border border-orange-500/30 hover:border-orange-500/70 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-extrabold hover:scale-110 hover:z-10 transition-all duration-300 whitespace-nowrap"
+                  style={{ ...pos, animationDelay: `${i * 0.7}s`, animationDuration: `${6 + (i % 3)}s` }}
                   title={`روح لقسم ${c.name}`}
                 >
                   <span className="mr-1">{c.emoji}</span> {c.name}
