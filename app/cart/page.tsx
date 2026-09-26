@@ -5,28 +5,58 @@ import Link from "next/link";
 import Image from "next/image";
 import { useCart } from "../components/CartProvider";
 import { useAuth } from "../lib/AuthProvider";
+import OpenAuthButton from "../components/OpenAuthButton";
 import { waLink } from "../lib/settings";
 
 const inputCls = "w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-sm placeholder-white/40 outline-none focus:border-orange-500/70 transition";
 
 const GOVS = ["القاهرة","الجيزة","الإسكندرية","الدقهلية","الشرقية","القليوبية","كفر الشيخ","الغربية","المنوفية","البحيرة","الإسماعيلية","بورسعيد","السويس","المنيا","بني سويف","الفيوم","أسيوط","سوهاج","قنا","الأقصر","أسوان","البحر الأحمر","الوادي الجديد","مطروح","شمال سيناء","جنوب سيناء","دمياط"];
 
+// 📅 مواعيد الاستلام: بعد الطلب بيوم (24 ساعة) — 7 أيام قادمة
+function getDeliveryDays() {
+  const days = [];
+  const start = new Date();
+  for (let i = 1; i <= 7; i++) {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    days.push({
+      label: d.toLocaleDateString("ar-EG", { weekday: "long", day: "numeric", month: "long" }),
+      value: d.toISOString().slice(0, 10),
+    });
+  }
+  return days;
+}
+
+// ⏰ فترات الاستلام: من 12 ظهرًا لـ 6 مساءً
+const TIME_SLOTS = [
+  { label: "من 12 ظهرًا حتى 2 عصرًا", value: "12:00-14:00" },
+  { label: "من 2 عصرًا حتى 4 عصرًا", value: "14:00-16:00" },
+  { label: "من 4 عصرًا حتى 6 مساءً", value: "16:00-18:00" },
+];
+
 export default function CartPage() {
   const { items, total, totalQty, setQty, remove, clear } = useCart();
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [gov, setGov] = useState("");
+  const [address, setAddress] = useState("");
+  const [day, setDay] = useState("");
+  const [timeSlot, setTimeSlot] = useState("");
   const [notes, setNotes] = useState("");
   const [msg, setMsg] = useState("");
 
-  // 📤 بناء رسالة الفاتورة المنسقة وإرسالها واتساب
+  const deliveryDays = getDeliveryDays();
+
   const sendOrder = () => {
     setMsg("");
     if (!name.trim()) return setMsg("اكتب اسمك الأول");
     if (!/^01[0-9]{9}$/.test(phone)) return setMsg("رقم التليفون لازم 11 رقم يبدأ بـ 01");
     if (!gov) return setMsg("اختار محافظتك");
+    if (!address.trim()) return setMsg("اكتب العنوان بالتفصيل — الشارع والعمارة والدور وعلامة مميزة");
+    if (!day) return setMsg("اختار يوم الاستلام");
+    if (!timeSlot) return setMsg("اختار الوقت المفضل للاستلام");
 
     const lines = [
       "🧾 *طلب جديد من موقع بيشوي*",
@@ -41,13 +71,16 @@ export default function CartPage() {
       `👤 الاسم: ${name.trim()}`,
       `📞 التليفون: ${phone}`,
       `📍 المحافظة: ${gov}`,
+      `🏠 العنوان: ${address.trim()}`,
+      `📅 يوم الاستلام: *${deliveryDays.find((d) => d.value === day)?.label}*`,
+      `⏰ الوقت المفضل: *${TIME_SLOTS.find((t) => t.value === timeSlot)?.label}*`,
       ...(notes.trim() ? [`📝 ملاحظات: ${notes.trim()}`] : []),
     ];
 
     window.open(waLink("201220847856", lines.join("\n")), "_blank");
+    clear();
   };
 
-  // 🛒 سلة فاضية
   if (items.length === 0) {
     return (
       <div className="max-w-md mx-auto px-4 py-24 text-center">
@@ -64,7 +97,7 @@ export default function CartPage() {
       <div className="flex items-center justify-between flex-wrap gap-3 mb-8">
         <div>
           <h1 className="text-3xl font-black">🧾 طلبك</h1>
-          <p className="text-white/50 text-sm mt-1">راجع منتجاتك، ظبط الكميات، وابعت الطلب على واتساب</p>
+          <p className="text-white/50 text-sm mt-1">راجع منتجاتك، ظبط الكميات، وابعت طلبك على واتساب</p>
         </div>
         <button onClick={() => { if (confirm("تفضيت السلة؟")) clear(); }} className="text-xs font-bold text-red-400 border border-red-500/30 hover:bg-red-500/10 rounded-lg px-4 py-2 transition">🗑️ تفريغ السلة</button>
       </div>
@@ -89,7 +122,6 @@ export default function CartPage() {
                 <p className="font-bold truncate">{x.name}</p>
                 <p className="text-xs text-white/40 font-bold mt-0.5">{x.price} ج.م × {x.qty} = <span className="text-orange-400">{x.qty * x.price} ج.م</span></p>
               </div>
-              {/* ⬆️⬇️ الكمية */}
               <div className="flex items-center gap-1.5 shrink-0">
                 <button onClick={() => setQty(x.id, x.qty - 1)} aria-label="تقليل" className="w-8 h-8 grid place-items-center rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 font-black">−</button>
                 <input
@@ -106,38 +138,67 @@ export default function CartPage() {
 
         {/* ═══════════ ملخص الطلب ═══════════ */}
         <div className="lg:col-span-2 rounded-3xl bg-[#101a30] border border-white/10 p-6 space-y-4 lg:sticky lg:top-24">
-          <h2 className="font-black text-lg">بياناتك 📝</h2>
-          <div className="space-y-3">
-            <input className={inputCls} placeholder="اسمك *" value={name} onChange={(e) => setName(e.target.value)} />
-            <input className={inputCls} inputMode="numeric" placeholder="رقم تليفونك (11 رقم) *" value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 11))} />
-            <select className={inputCls} value={gov} onChange={(e) => setGov(e.target.value)}>
-              <option value="" className="bg-[#101a30]">محافظتك *</option>
-              {GOVS.map((g) => <option key={g} value={g} className="bg-[#101a30]">{g}</option>)}
-            </select>
-            <textarea className={inputCls + " min-h-20 resize-none"} placeholder="ملاحظات — منطقتك بالتحديد، موعد التسليم المناسب..." value={notes} onChange={(e) => setNotes(e.target.value)} />
-            {!user && (
-              <p className="text-[11px] text-white/40 leading-relaxed">
-                💡 لو عندك حساب: <Link href="/" className="text-orange-400 font-bold hover:underline">سجّل الدخول</Link> — وبياناتك هتتملى تلقائيًا المرة الجاية
-              </p>
-            )}
-          </div>
+          <h2 className="font-black text-lg">
+            {user ? "بياناتك 📝" : "تأكيد الطلب 🔒"}
+          </h2>
 
-          {/* الإجمالي */}
-          <div className="rounded-2xl border border-orange-500/30 bg-orange-500/5 p-4">
-            <div className="flex items-center justify-between text-sm text-white/60">
-              <span>إجمالي القطع</span><span className="font-bold">{totalQty}</span>
+          {/* 🔒 لازم تسجيل دخول قبل أي بيانات */}
+          {loading ? (
+            <div className="h-10 rounded-xl bg-white/5 animate-pulse" />
+          ) : !user ? (
+            <div className="rounded-2xl border border-dashed border-orange-500/40 bg-orange-500/5 p-5 text-center">
+              <span className="text-3xl">🔒</span>
+              <p className="text-sm font-bold mt-2">لمعرفة تفاصيل الطلب يرجى تسجيل الدخول</p>
+              <p className="text-[11px] text-white/40 mt-1">السلة محفوظة عندك — أول ما تسجل هتكمل عادي</p>
+              <div className="flex gap-2 justify-center mt-4 flex-wrap">
+                <OpenAuthButton mode="login" className="bg-orange-500 hover:bg-orange-400 px-5 py-2.5 rounded-xl font-bold text-sm transition">تسجيل الدخول</OpenAuthButton>
+                <OpenAuthButton mode="register" className="border border-white/15 hover:bg-white/5 px-5 py-2.5 rounded-xl font-bold text-sm transition">حساب جديد</OpenAuthButton>
+              </div>
             </div>
-            <div className="flex items-center justify-between mt-2">
-              <span className="font-bold">الإجمالي</span>
-              <span className="text-2xl font-black text-orange-400">{total} <span className="text-sm">ج.م</span></span>
-            </div>
-          </div>
+          ) : (
+            <>
+              <div className="space-y-3">
+                <input className={inputCls} placeholder="اسمك *" value={name} onChange={(e) => setName(e.target.value)} />
+                <input className={inputCls} inputMode="numeric" placeholder="رقم تليفونك (11 رقم) *" value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 11))} />
+                <select className={inputCls} value={gov} onChange={(e) => setGov(e.target.value)}>
+                  <option value="" className="bg-[#101a30]">محافظتك *</option>
+                  {GOVS.map((g) => <option key={g} value={g} className="bg-[#101a30]">{g}</option>)}
+                </select>
+                <textarea className={inputCls + " min-h-20 resize-none"} placeholder="العنوان بالتفصيل * — الشارع، رقم العمارة، الدور، الشقة، علامة مميزة" value={address} onChange={(e) => setAddress(e.target.value)} />
+              </div>
 
-          <button onClick={sendOrder} className="w-full bg-green-500 hover:bg-green-400 text-[#08130b] rounded-xl py-4 font-extrabold transition flex items-center justify-center gap-2.5 shadow-lg shadow-green-500/20">
-            <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
-            ابعت الطلب على واتساب
-          </button>
-          <p className="text-center text-[11px] text-white/30">هيتفحص الطلب ويتم الاتفاق على التسليم والدفع 🤝</p>
+              {/* 📅 مواعيد الاستلام */}
+              <div className="rounded-2xl border border-blue-500/30 bg-blue-500/5 p-4 space-y-3">
+                <p className="text-xs font-extrabold text-blue-300">📅 مواعيد الاستلام — بعد الطلب بيوم (24 ساعة)</p>
+                <p className="text-[11px] text-white/40 leading-relaxed">الاستلام متاح من الساعة 12 ظهرًا حتى 6 مساءً — اختار اليوم والوقت المناسب ليك:</p>
+                <select className={inputCls} value={day} onChange={(e) => setDay(e.target.value)}>
+                  <option value="" className="bg-[#101a30]">يوم الاستلام *</option>
+                  {deliveryDays.map((d) => <option key={d.value} value={d.value} className="bg-[#101a30]">{d.label}</option>)}
+                </select>
+                <select className={inputCls} value={timeSlot} onChange={(e) => setTimeSlot(e.target.value)}>
+                  <option value="" className="bg-[#101a30]">الوقت المفضل للاستلام *</option>
+                  {TIME_SLOTS.map((t) => <option key={t.value} value={t.value} className="bg-[#101a30]">{t.label}</option>)}
+                </select>
+              </div>
+
+              <textarea className={inputCls + " min-h-16 resize-none"} placeholder="ملاحظات إضافية (اختياري)" value={notes} onChange={(e) => setNotes(e.target.value)} />
+
+              <div className="rounded-2xl border border-orange-500/30 bg-orange-500/5 p-4">
+                <div className="flex items-center justify-between text-sm text-white/60">
+                  <span>إجمالي القطع</span><span className="font-bold">{totalQty}</span>
+                </div>
+                <div className="flex items-center justify-between mt-2">
+                  <span className="font-bold">الإجمالي</span>
+                  <span className="text-2xl font-black text-orange-400">{total} <span className="text-sm">ج.م</span></span>
+                </div>
+              </div>
+
+              <button onClick={sendOrder} className="w-full bg-green-500 hover:bg-green-400 text-[#08130b] rounded-xl py-4 font-extrabold transition shadow-lg shadow-green-500/20">
+                ✅ تأكيد الطلب وإرساله
+              </button>
+              <p className="text-center text-[11px] text-white/30">هيتفحص الطلب ويتم الاتفاق على الدفع والتسليم 🤝</p>
+            </>
+          )}
         </div>
       </div>
     </div>

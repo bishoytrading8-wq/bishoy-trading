@@ -26,7 +26,6 @@ const CUSTOMER_ROLE: Role = {
   perms: { manageProducts: false, viewClients: false, addClients: false },
 };
 
-// 🧠 إزاي بنعرف الدور؟ المالك بالإيميل الثابت — الموظف من جدول staff_members
 async function computeRole(u: User | null): Promise<Role | null> {
   if (!u) return null;
   if ((u.email ?? "").toLowerCase() === ADMIN_EMAIL) return OWNER_ROLE;
@@ -54,10 +53,13 @@ interface AuthCtx {
   user: User | null;
   loading: boolean;
   role: Role | null;
-  isAdmin: boolean;          // مالك أو موظف بصلاحية إدارة
+  isAdmin: boolean;
   can: (perm: keyof Role["perms"]) => boolean;
   openAuth: (mode?: "login" | "register") => void;
   signOut: () => Promise<void>;
+  // 👁️ وضع المعاينة: مالك/موظف بيشوف الموقع كعميل عادي مؤقتًا
+  previewMode: boolean;
+  togglePreview: () => void;
 }
 
 const Ctx = createContext<AuthCtx | null>(null);
@@ -71,6 +73,7 @@ export function useAuth() {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<Role | null>(null);
+  const [previewMode, setPreviewMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"login" | "register">("login");
@@ -96,18 +99,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = useCallback(async () => {
+    setPreviewMode(false);
     await supabase.auth.signOut();
   }, []);
 
   const can = useCallback(
-    (perm: keyof Role["perms"]) => !!role?.perms[perm],
-    [role]
+    (perm: keyof Role["perms"]) => !previewMode && !!role?.perms[perm],
+    [role, previewMode]
   );
 
-  const isAdmin = role?.kind === "owner" || (role?.kind === "staff" && role.perms.manageProducts);
+  // 👁️ أثناء المعاينة: الدور الحقيقي بيتخزن، بس isAdmin بيرجع false مؤقتًا
+  const isAdmin = !previewMode && (role?.kind === "owner" || (role?.kind === "staff" && role.perms.manageProducts));
+
+  const togglePreview = useCallback(() => setPreviewMode((p) => !p), []);
+
+  // القيمة اللي بتتشاف: أثناء المعاينة الدور بيتعرض كعميل
+  const effectiveRole = previewMode ? CUSTOMER_ROLE : role;
 
   return (
-    <Ctx.Provider value={{ user, loading, role, isAdmin, can, openAuth, signOut }}>
+    <Ctx.Provider value={{ user, loading, role: effectiveRole, isAdmin, can, openAuth, signOut, previewMode, togglePreview }}>
       {children}
       <AuthModal open={open} initialMode={mode} onClose={() => setOpen(false)} />
     </Ctx.Provider>
