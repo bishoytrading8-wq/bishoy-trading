@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Cairo } from "next/font/google";
 import "./globals.css";
 import Header from "./components/Header";
@@ -19,9 +20,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ar" dir="rtl">
+    <html lang="ar" dir="rtl" suppressHydrationWarning>
       <body className={`${cairo.variable} antialiased bg-[#0b1220] text-white`}>
-        <script dangerouslySetInnerHTML={{ __html: "try{if(localStorage.getItem('theme')==='light')document.documentElement.classList.add('light')}catch(e){}" }} />
+        <Script id="theme-init" strategy="beforeInteractive">
+          {`try{if(localStorage.getItem('theme')==='light')document.documentElement.classList.add('light')}catch(e){}`}
+        </Script>
         <AuthProvider>
           <Header />
           <main className="min-h-[60vh]">{children}</main>
