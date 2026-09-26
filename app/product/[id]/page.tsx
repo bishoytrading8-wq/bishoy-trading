@@ -6,6 +6,7 @@ import { getSettings, waLink } from "../../lib/settings";
 import ProductGallery from "../../components/ProductGallery";
 import DbProductCard from "../../components/DbProductCard";
 import PriceGate from "../../components/PriceGate";
+import AddToCartButton from "../../components/AddToCartButton";
 
 export const revalidate = 0;
 
@@ -69,7 +70,12 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
 
           <div className="mt-6"><PriceGate price={final} /></div>
 
-          <div className="flex gap-3 mt-6 flex-wrap">
+          {/* 🛒 إضافة للطلب */}
+          <div className="mt-4">
+            <AddToCartButton item={{ id: product.id, name: product.name, price: final, emoji: product.emoji ?? "📦", image: product.images?.[0] }} className="py-3.5 text-base" />
+          </div>
+
+          <div className="flex gap-3 mt-4 flex-wrap">
             <a href={`tel:${s.mobile}`} className="bg-orange-500 hover:bg-orange-400 px-7 py-3 rounded-xl font-extrabold transition shadow-lg shadow-orange-500/20">📞 اتصل بنا</a>
             <a href={waLink(s.whatsapp, `مرحبًا 👋 مهتم بـ ${product.name}`)} target="_blank" className="border border-green-500/40 text-green-400 hover:bg-green-500/10 px-7 py-3 rounded-xl font-bold transition">💬 واتساب</a>
           </div>

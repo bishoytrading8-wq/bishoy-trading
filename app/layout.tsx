@@ -4,6 +4,7 @@ import "./globals.css";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import { AuthProvider } from "./lib/AuthProvider";
+import { CartProvider } from "./components/CartProvider";
 
 const cairo = Cairo({
   subsets: ["arabic", "latin"],
@@ -22,9 +23,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ar" dir="rtl" suppressHydrationWarning>
       <body className={`${cairo.variable} antialiased bg-[#0b1220] text-white`}>
         <AuthProvider>
-          <Header />
-          <main className="min-h-[60vh]">{children}</main>
-          <Footer />
+          <CartProvider>
+            <Header />
+            <main className="min-h-[60vh]">{children}</main>
+            <Footer />
+          </CartProvider>
         </AuthProvider>
       </body>
     </html>

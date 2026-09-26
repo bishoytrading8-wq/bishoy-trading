@@ -9,6 +9,7 @@ import { getSettings, type SiteSettings } from "../lib/settings";
 import { getCategories, type DbCategory } from "../lib/catalog";
 import { useAuth } from "../lib/AuthProvider";
 import ThemeToggle from "./ThemeToggle";
+import CartButton from "./CartButton";
 
 const NAV = [
   { href: "/", label: "الرئيسية" },
@@ -58,14 +59,12 @@ export default function Header() {
 
   return (
     <header className={`sticky top-0 z-50 border-b border-white/10 transition-all ${scrolled ? "bg-[#0b1220]/95 backdrop-blur-lg shadow-lg shadow-black/40" : "bg-[#0b1220]/70 backdrop-blur"}`}>
-      {/* الشريط العلوي — من الإعدادات */}
       <div className="hidden md:flex items-center justify-between text-xs text-white/50 border-b border-white/5 px-4 lg:px-8 py-1.5 max-w-7xl mx-auto">
         <p>☎️ <span dir="ltr">{s.landline}</span> • 📱 <span dir="ltr">{s.mobile}</span></p>
         <p>🕗 {s.hours}</p>
       </div>
 
       <div className="flex items-center justify-between gap-4 px-4 lg:px-8 py-3 max-w-7xl mx-auto">
-        {/* اللوجو */}
         <Link href="/" className="flex items-center gap-3 group shrink-0">
           <Image src="/logo.jpeg" alt="شعار شركة بيشوي للتجارة والتوريدات" width={48} height={48} className="rounded-full ring-2 ring-orange-500/70 group-hover:ring-orange-400 transition" />
           <span className="leading-tight">
@@ -74,7 +73,6 @@ export default function Header() {
           </span>
         </Link>
 
-        {/* نافيجيشن ديسكتوب */}
         <nav className="hidden lg:flex items-center gap-1">
           {NAV.map((l) => <Link key={l.href} href={l.href} className={linkCls(l.href)}>{l.label}</Link>)}
           <div className="relative" onMouseEnter={() => setCatsOpen(true)} onMouseLeave={() => setCatsOpen(false)}>
@@ -95,9 +93,9 @@ export default function Header() {
           </div>
         </nav>
 
-        {/* الدخول — ديسكتوب */}
         <div className="hidden lg:flex items-center gap-2">
           <ThemeToggle />
+          <CartButton />
           {loading ? <span className="w-24 h-9 rounded-lg bg-white/5 animate-pulse" />
             : user ? (<>
               {role && role.kind !== "customer" && (
@@ -116,7 +114,6 @@ export default function Header() {
             </>)}
         </div>
 
-        {/* زرار الموبايل ☰ */}
         <button onClick={() => setOpen(!open)} aria-label="القائمة" className="lg:hidden w-10 h-10 grid place-items-center rounded-lg border border-white/10 bg-white/5">
           <div className="space-y-1.5">
             <span className={`block w-5 h-0.5 bg-white transition ${open ? "rotate-45 translate-y-2" : ""}`} />
@@ -126,9 +123,13 @@ export default function Header() {
         </button>
       </div>
 
-      {/* قايمة الموبايل */}
       {open && (
         <div className="lg:hidden border-t border-white/10 bg-[#0b1220]/95 backdrop-blur-lg px-4 py-4 max-h-[70vh] overflow-y-auto">
+          <Link href="/cart" className="flex items-center justify-between rounded-xl bg-white/5 border border-white/10 px-4 py-3 mb-3">
+            <span className="text-sm font-bold text-white/80">🛒 طلباتي</span>
+            <span className="text-orange-400 text-sm font-bold">فتح ←</span>
+          </Link>
+
           <div className="flex items-center justify-between px-1 pb-3">
             <span className="text-xs text-white/40 font-bold">مظهر الموقع</span>
             <ThemeToggle />
