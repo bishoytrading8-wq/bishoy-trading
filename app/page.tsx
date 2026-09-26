@@ -1,8 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { getCategories, getCategoryCounts, countProducts } from "./lib/catalog";
-import MembersCTA from "./components/MembersCTA";
-import AnimatedCategories from "./components/AnimatedCategories";
+import HomeCTA from "./components/HomeCTA";
+import CatsGrid from "./components/CatsGrid";
 
 export const revalidate = 0;
 
@@ -14,13 +14,10 @@ const WHY = [
 ];
 
 // 🎈 توزيع رياضي على محيط دايرة حوالين اللوجو
-// مهما كان عدد الأقسام — بتتوزع بانتظام ومفيش شارة بتتقطع أو تتراكب
 function orbitPosition(index: number, total: number) {
-  // نبدأ من فوق (-90 درجة) ونلف مع عقارب الساعة
   const angle = (index / total) * 2 * Math.PI - Math.PI / 2;
-  // بيضاوية آمنة: مضمونة جوه الحدود على اللاب والموبايل
-  const radiusX = 36; // % عرضي
-  const radiusY = 45; // % رأسي
+  const radiusX = 36;
+  const radiusY = 45;
   const x = 50 + radiusX * Math.cos(angle);
   const y = 50 + radiusY * Math.sin(angle);
   return { left: `${x}%`, top: `${y}%`, transform: "translate(-50%, -50%)" };
@@ -71,13 +68,9 @@ export default async function Home() {
 
           {/* 🎈 اللوجو + الحلقات + شارات الأقسام — توزيع رياضي مضمون */}
           <div className="relative h-[380px] sm:h-[460px]">
-            {/* الهالة */}
             <div className="absolute inset-0 m-auto w-56 h-56 sm:w-72 sm:h-72 rounded-full bg-orange-500/20 blur-3xl animate-pulse-glow" />
-            {/* الحلقة المنقطة الكبيرة — بتلف */}
             <div className="absolute inset-0 m-auto w-72 h-72 sm:w-96 sm:h-96 rounded-full border border-dashed border-white/10 animate-spin-slow" />
-            {/* الحلقة الداخلية */}
             <div className="absolute inset-0 m-auto w-60 h-60 sm:w-80 sm:h-80 rounded-full border-2 border-orange-500/30 animate-spin-slower" />
-            {/* اللوجو — حاوم */}
             <div className="absolute inset-0 m-auto w-44 h-44 sm:w-64 sm:h-64 rounded-full bg-white ring-4 ring-orange-500/60 shadow-2xl animate-float overflow-hidden">
               <Image src="/logo.jpeg" alt="شعار شركة بيشوي للتجارة والتوريدات" width={256} height={256} className="w-full h-full object-cover rounded-full" />
             </div>
@@ -107,7 +100,7 @@ export default async function Home() {
           <h2 className="text-3xl lg:text-4xl font-black">أقسامنا <span className="text-orange-400">الرئيسية</span></h2>
           <p className="text-white/50 mt-3">اختار القسم واستعرض منتجاتنا</p>
         </div>
-        <AnimatedCategories cats={cats} counts={counts} />
+        <CatsGrid cats={cats} counts={counts} />
       </section>
 
       {/* ===== ليه تشتري مننا ===== */}
@@ -125,7 +118,7 @@ export default async function Home() {
       </section>
 
       {/* ===== الدعوة الذكية ===== */}
-      <MembersCTA />
+      <HomeCTA />
     </>
   );
 }
