@@ -54,13 +54,15 @@ export default function Header() {
   const linkCls = (href: string) =>
     `px-4 py-2 rounded-lg text-sm font-bold transition ${isActive(href) ? "text-orange-400 bg-orange-500/10" : "text-white/80 hover:text-white hover:bg-white/5"}`;
 
+  // 🧾 لينك طلباتي — للعملاء المسجلين بس
+  const fullNav = [...NAV, ...(user ? [{ href: "/my-orders", label: "🧾 طلباتي" }] : [])];
+
   const roleBadge =
     role?.kind === "owner" ? "👑 مالك" :
     role?.kind === "staff" ? "🧑‍💼 موظف" : null;
 
   return (
     <header className={`sticky top-0 z-50 border-b transition-all ${previewMode ? "border-orange-500/40 bg-[#0b1220]/95 backdrop-blur-lg" : "border-white/10"} ${scrolled ? "shadow-lg shadow-black/40" : ""} ${previewMode ? "" : scrolled ? "bg-[#0b1220]/95 backdrop-blur-lg" : "bg-[#0b1220]/70 backdrop-blur"}`}>
-      {/* شريط المعاينة */}
       {previewMode && (
         <div className="bg-orange-500/15 border-b border-orange-500/30 px-4 py-1.5 text-center">
           <p className="text-[11px] font-bold text-orange-300">👁️ وضع المعاينة — بتشوف الموقع كعميل عادي • بياناتك الإدارية مخفية</p>
@@ -82,7 +84,7 @@ export default function Header() {
         </Link>
 
         <nav className="hidden lg:flex items-center gap-1">
-          {NAV.map((l) => <Link key={l.href} href={l.href} className={linkCls(l.href)}>{l.label}</Link>)}
+          {fullNav.map((l) => <Link key={l.href} href={l.href} className={linkCls(l.href)}>{l.label}</Link>)}
           <div className="relative" onMouseEnter={() => setCatsOpen(true)} onMouseLeave={() => setCatsOpen(false)}>
             <button className={`flex items-center gap-1 px-4 py-2 rounded-lg text-sm font-bold transition ${pathname.startsWith("/category") ? "text-orange-400 bg-orange-500/10" : "text-white/80 hover:text-white hover:bg-white/5"}`}>
               الأقسام <span className={`inline-block text-[10px] transition ${catsOpen ? "rotate-180" : ""}`}>▼</span>
@@ -135,7 +137,7 @@ export default function Header() {
       {open && (
         <div className="lg:hidden border-t border-white/10 bg-[#0b1220]/95 backdrop-blur-lg px-4 py-4 max-h-[70vh] overflow-y-auto">
           <Link href="/cart" className="flex items-center justify-between rounded-xl bg-white/5 border border-white/10 px-4 py-3 mb-3">
-            <span className="text-sm font-bold text-white/80">🛒 طلباتي</span>
+            <span className="text-sm font-bold text-white/80">🛒 طلباتي (السلة)</span>
             <span className="text-orange-400 text-sm font-bold">فتح ←</span>
           </Link>
 
@@ -144,7 +146,7 @@ export default function Header() {
             <ThemeToggle />
           </div>
 
-          {NAV.map((l) => (
+          {fullNav.map((l) => (
             <Link key={l.href} href={l.href} className={`block px-4 py-3 rounded-xl font-bold transition ${isActive(l.href) ? "text-orange-400 bg-orange-500/10" : "text-white/80 hover:bg-white/5"}`}>{l.label}</Link>
           ))}
           <p className="text-xs text-white/40 font-bold pt-4 pb-1 px-4">الأقسام</p>
