@@ -5,6 +5,7 @@ import Header from "./components/Header";
 import Footer from "./components/Footer";
 import { AuthProvider } from "./lib/AuthProvider";
 import { CartProvider } from "./components/CartProvider";
+import PreviewExitButton from "./components/PreviewExitButton";
 
 const cairo = Cairo({
   subsets: ["arabic", "latin"],
@@ -24,6 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`${cairo.variable} antialiased bg-[#0b1220] text-white`}>
         <AuthProvider>
           <CartProvider>
+                        <PreviewExitButton />
             <Header />
             <main className="min-h-[60vh]">{children}</main>
             <Footer />

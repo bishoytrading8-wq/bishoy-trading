@@ -10,6 +10,7 @@ import { getCategories, type DbCategory } from "../lib/catalog";
 import { useAuth } from "../lib/AuthProvider";
 import ThemeToggle from "./ThemeToggle";
 import CartButton from "./CartButton";
+import ViewToggle from "./ViewToggle";
 
 const NAV = [
   { href: "/", label: "الرئيسية" },
@@ -19,7 +20,7 @@ const NAV = [
 
 export default function Header() {
   const pathname = usePathname();
-  const { user, loading, role, openAuth, signOut } = useAuth();
+  const { user, loading, role, openAuth, signOut, previewMode, togglePreview } = useAuth();
   const [open, setOpen] = useState(false);
   const [catsOpen, setCatsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -58,7 +59,14 @@ export default function Header() {
     role?.kind === "staff" ? "🧑‍💼 موظف" : null;
 
   return (
-    <header className={`sticky top-0 z-50 border-b border-white/10 transition-all ${scrolled ? "bg-[#0b1220]/95 backdrop-blur-lg shadow-lg shadow-black/40" : "bg-[#0b1220]/70 backdrop-blur"}`}>
+    <header className={`sticky top-0 z-50 border-b transition-all ${previewMode ? "border-orange-500/40 bg-[#0b1220]/95 backdrop-blur-lg" : "border-white/10"} ${scrolled ? "shadow-lg shadow-black/40" : ""} ${previewMode ? "" : scrolled ? "bg-[#0b1220]/95 backdrop-blur-lg" : "bg-[#0b1220]/70 backdrop-blur"}`}>
+      {/* شريط المعاينة */}
+      {previewMode && (
+        <div className="bg-orange-500/15 border-b border-orange-500/30 px-4 py-1.5 text-center">
+          <p className="text-[11px] font-bold text-orange-300">👁️ وضع المعاينة — بتشوف الموقع كعميل عادي • بياناتك الإدارية مخفية</p>
+        </div>
+      )}
+
       <div className="hidden md:flex items-center justify-between text-xs text-white/50 border-b border-white/5 px-4 lg:px-8 py-1.5 max-w-7xl mx-auto">
         <p>☎️ <span dir="ltr">{s.landline}</span> • 📱 <span dir="ltr">{s.mobile}</span></p>
         <p>🕗 {s.hours}</p>
@@ -95,16 +103,17 @@ export default function Header() {
 
         <div className="hidden lg:flex items-center gap-2">
           <ThemeToggle />
+          <ViewToggle />
           <CartButton />
           {loading ? <span className="w-24 h-9 rounded-lg bg-white/5 animate-pulse" />
             : user ? (<>
-              {role && role.kind !== "customer" && (
+              {role && role.kind !== "customer" && !previewMode && (
                 <Link href="/admin" className="px-4 py-2 rounded-lg bg-orange-500/15 border border-orange-500/40 text-orange-300 hover:bg-orange-500/25 text-sm font-bold transition">
                   ⚙️ الإدارة
                 </Link>
               )}
               <span className="text-xs text-white/60 max-w-[140px] truncate" dir="ltr">{user.email}</span>
-              {roleBadge && (
+              {roleBadge && !previewMode && (
                 <span className="text-[10px] font-bold text-orange-300 bg-orange-500/10 border border-orange-500/30 rounded-full px-2.5 py-1">{roleBadge}</span>
               )}
               <button onClick={signOut} className="px-4 py-2 rounded-lg border border-white/15 hover:bg-white/5 text-sm font-bold transition">خروج</button>
@@ -148,11 +157,11 @@ export default function Header() {
           </div>
           <div className="pt-4 border-t border-white/10 mt-4 space-y-2">
             {loading ? null : user ? (<>
-              {role && role.kind !== "customer" && (
+              {role && role.kind !== "customer" && !previewMode && (
                 <Link href="/admin" className="block text-center bg-orange-500/15 border border-orange-500/40 text-orange-300 rounded-lg py-2.5 font-bold text-sm">⚙️ لوحة التحكم</Link>
               )}
               <div className="flex items-center justify-between gap-3">
-                <span className="text-xs text-white/60 truncate" dir="ltr">{user.email} {roleBadge && `• ${roleBadge}`}</span>
+                <span className="text-xs text-white/60 truncate" dir="ltr">{user.email} {roleBadge && !previewMode && `• ${roleBadge}`}</span>
                 <button onClick={signOut} className="text-sm border border-white/15 rounded-lg px-4 py-2 font-bold shrink-0">خروج</button>
               </div>
             </>) : (

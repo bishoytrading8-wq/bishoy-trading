@@ -7,6 +7,7 @@ import { useCart } from "../components/CartProvider";
 import { useAuth } from "../lib/AuthProvider";
 import OpenAuthButton from "../components/OpenAuthButton";
 import { waLink } from "../lib/settings";
+import { supabase } from "../lib/supabase";
 
 const inputCls = "w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-sm placeholder-white/40 outline-none focus:border-orange-500/70 transition";
 
@@ -46,10 +47,11 @@ export default function CartPage() {
   const [timeSlot, setTimeSlot] = useState("");
   const [notes, setNotes] = useState("");
   const [msg, setMsg] = useState("");
+  const [sending, setSending] = useState(false);
 
   const deliveryDays = getDeliveryDays();
 
-  const sendOrder = () => {
+  const sendOrder = async () => {
     setMsg("");
     if (!name.trim()) return setMsg("اكتب اسمك الأول");
     if (!/^01[0-9]{9}$/.test(phone)) return setMsg("رقم التليفون لازم 11 رقم يبدأ بـ 01");
@@ -57,6 +59,22 @@ export default function CartPage() {
     if (!address.trim()) return setMsg("اكتب العنوان بالتفصيل — الشارع والعمارة والدور وعلامة مميزة");
     if (!day) return setMsg("اختار يوم الاستلام");
     if (!timeSlot) return setMsg("اختار الوقت المفضل للاستلام");
+
+    setSending(true);
+
+    // 💾 تسجيل الطلب في قاعدة البيانات
+    const { error: dbError } = await supabase.from("orders").insert({
+      customer_name: name.trim(),
+      customer_phone: phone,
+      customer_gov: gov,
+      customer_address: address.trim(),
+      items_json: items.map((x) => ({ name: x.name, qty: x.qty, price: x.price })),
+      items_count: totalQty,
+      total,
+      delivery_day: deliveryDays.find((d) => d.value === day)?.label ?? "",
+      delivery_slot: TIME_SLOTS.find((t) => t.value === timeSlot)?.label ?? "",
+      notes: notes.trim(),
+    });
 
     const lines = [
       "🧾 *طلب جديد من موقع بيشوي*",
@@ -75,9 +93,11 @@ export default function CartPage() {
       `📅 يوم الاستلام: *${deliveryDays.find((d) => d.value === day)?.label}*`,
       `⏰ الوقت المفضل: *${TIME_SLOTS.find((t) => t.value === timeSlot)?.label}*`,
       ...(notes.trim() ? [`📝 ملاحظات: ${notes.trim()}`] : []),
+      ...(dbError ? ["⚠️ (ملحوظة داخلية: الطلب اتبعت بس متسجلش في النظام)"] : []),
     ];
 
     window.open(waLink("201220847856", lines.join("\n")), "_blank");
+    setSending(false);
     clear();
   };
 
@@ -193,8 +213,8 @@ export default function CartPage() {
                 </div>
               </div>
 
-              <button onClick={sendOrder} className="w-full bg-green-500 hover:bg-green-400 text-[#08130b] rounded-xl py-4 font-extrabold transition shadow-lg shadow-green-500/20">
-                ✅ تأكيد الطلب وإرساله
+              <button onClick={sendOrder} disabled={sending} className="w-full bg-green-500 hover:bg-green-400 disabled:opacity-60 text-[#08130b] rounded-xl py-4 font-extrabold transition shadow-lg shadow-green-500/20">
+                {sending ? "جاري تأكيد الطلب..." : "✅ تأكيد الطلب وإرساله"}
               </button>
               <p className="text-center text-[11px] text-white/30">هيتفحص الطلب ويتم الاتفاق على الدفع والتسليم 🤝</p>
             </>

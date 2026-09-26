@@ -1,10 +1,13 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { getCategories, getCategoryCounts, countProducts } from "./lib/catalog";
 import HomeCTA from "./components/HomeCTA";
 import CatsGrid from "./components/CatsGrid";
-
-export const revalidate = 0;
+import AdminHome from "./components/AdminHome";
+import { useAuth } from "./lib/AuthProvider";
 
 const WHY = [
   { icon: "✅", title: "جودة مضمونة", desc: "منتجات مختارة بعناية قبل ما توصلك" },
@@ -13,22 +16,51 @@ const WHY = [
   { icon: "🤝", title: "تعامل مباشر", desc: "واتساب وتليفون — بدون وسيط" },
 ];
 
-// 🎈 توزيع رياضي على محيط دايرة حوالين اللوجو — مواقع ثابتة أنيقة
-function orbitPosition(index: number, total: number) {
-  const angle = (index / total) * 2 * Math.PI - Math.PI / 2;
-  const radiusX = 36;
-  const radiusY = 45;
-  const x = 50 + radiusX * Math.cos(angle);
-  const y = 50 + radiusY * Math.sin(angle);
-  return { left: `${x}%`, top: `${y}%`, transform: "translate(-50%, -50%)" };
+// 🎭 الصفحة الرئيسية بوضعين:
+// 👑 إدارة → مركز القيادة الكامل
+// 👁️ معاينة / عميل عادي → الهيرو الكلاسيكي الأنيق
+export default function Home() {
+  const { role, previewMode } = useAuth();
+
+  // لسه بيتحمل الدور — شاشة تحميل أنيقة
+  if (role === null && !previewMode) {
+    // لو مفيش يوزر خالص وعرفنا إنه زائر — نعرض الهيرو على طول
+    // (الدور بيتحمل مرة واحدة في أول ثواني — لو زائر هيتحدد customer)
+    return <LoadingHome />;
+  }
+
+  const isAdminView = !previewMode && role && role.kind !== "customer";
+
+  if (isAdminView) return <AdminHome />;
+
+  return <CustomerHome />;
 }
 
-export default async function Home() {
-  const [cats, counts, total] = await Promise.all([
-    getCategories(),
-    getCategoryCounts(),
-    countProducts(),
-  ]);
+// ⏳ شاشة تحميل أثناء قراءة الدور
+function LoadingHome() {
+  return (
+    <div className="max-w-7xl mx-auto px-4 py-16">
+      <div className="h-72 rounded-3xl bg-white/5 animate-pulse" />
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mt-6">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="h-40 rounded-3xl bg-white/5 animate-pulse" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// 🛍️ الرئيسية الكلاسيكية — للزوار والعملاء ووضع المعاينة
+function CustomerHome() {
+  const [cats, setCats] = useState<Awaited<ReturnType<typeof getCategories>>>([]);
+  const [counts, setCounts] = useState<Record<string, number>>({});
+  const [total, setTotal] = useState(0);
+
+  useEffect(() => {
+    getCategories().then(setCats);
+    getCategoryCounts().then(setCounts);
+    countProducts().then((n) => setTotal(n));
+  }, []);
 
   return (
     <>
@@ -66,24 +98,25 @@ export default async function Home() {
             </div>
           </div>
 
-          {/* 🎈 اللوجو بحافته البرتقالية + حلقتين هاديين + شارات الأقسام بحركة بسيطة */}
-          <div className="relative h-[380px] sm:h-[460px]">
-            <div className="absolute inset-0 m-auto w-56 h-56 sm:w-72 sm:h-72 rounded-full bg-orange-500/20 blur-3xl animate-pulse-glow" />
-            <div className="absolute inset-0 m-auto w-72 h-72 sm:w-96 sm:h-96 rounded-full border border-dashed border-white/10" />
-            <div className="absolute inset-0 m-auto w-60 h-60 sm:w-80 sm:h-80 rounded-full border-2 border-orange-500/30" />
-            <div className="absolute inset-0 m-auto w-44 h-44 sm:w-64 sm:h-64 rounded-full bg-white ring-4 ring-orange-500/60 shadow-2xl overflow-hidden">
+          {/* 🎈 اللوجو + الحلقات + شارات الأقسام — توزيع دائري منتظم */}
+          <div className="relative w-[88%] max-w-[470px] aspect-square mx-auto">
+            <div className="absolute inset-0 m-auto w-1/2 h-1/2 rounded-full bg-orange-500/20 blur-3xl animate-pulse-glow" />
+            <div className="absolute inset-0 rounded-full border border-dashed border-white/15" />
+            <div className="absolute inset-[11%] rounded-full border-2 border-orange-500/30" />
+            <div className="absolute inset-0 m-auto w-[44%] aspect-square rounded-full bg-white ring-4 ring-orange-500/60 shadow-2xl overflow-hidden">
               <Image src="/logo.jpeg" alt="شعار شركة بيشوي للتجارة والتوريدات" width={256} height={256} className="w-full h-full object-cover rounded-full" />
             </div>
 
-            {/* 🏷️ شارات الأقسام — من قاعدة البيانات، ثابتة أماكنها، بتحوم بهدوء */}
             {cats.map((c, i) => {
-              const pos = orbitPosition(i, cats.length);
+              const angle = (i / cats.length) * 2 * Math.PI - Math.PI / 2;
+              const x = 50 + 50 * Math.cos(angle);
+              const y = 50 + 50 * Math.sin(angle);
               return (
                 <Link
                   key={c.slug}
                   href={`/category/${c.slug}`}
-                  className="absolute animate-float-slow rounded-full bg-white text-[#0f172a] shadow-lg hover:shadow-xl border border-orange-500/30 hover:border-orange-500/70 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-extrabold hover:scale-110 hover:z-10 transition-all duration-300 whitespace-nowrap"
-                  style={{ ...pos, animationDelay: `${i * 0.7}s`, animationDuration: `${6 + (i % 3)}s` }}
+                  className="absolute animate-float-slow rounded-2xl bg-white/95 backdrop-blur text-[#0f172a] shadow-lg shadow-black/30 hover:shadow-xl hover:shadow-orange-500/20 border border-orange-500/40 hover:border-orange-500 px-2.5 sm:px-4 py-1.5 sm:py-2.5 text-[10px] sm:text-sm font-bold hover:scale-110 hover:z-10 transition-all duration-300 whitespace-nowrap"
+                  style={{ left: `${x}%`, top: `${y}%`, transform: "translate(-50%, -50%)", animationDelay: `${i * 0.7}s`, animationDuration: `${6 + (i % 3)}s` }}
                   title={`روح لقسم ${c.name}`}
                 >
                   <span className="mr-1">{c.emoji}</span> {c.name}
