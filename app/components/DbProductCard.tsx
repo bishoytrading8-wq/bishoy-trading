@@ -4,6 +4,15 @@ import Link from "next/link";
 import type { DbProduct } from "../lib/catalog";
 import { priceInfo } from "../lib/catalog";
 import PriceGate from "./PriceGate";
+import AddToCartButton from "./AddToCartButton";
+
+// 🖼️ تصغير صور Supabase تلقائيًا — بدل تحميل 3 ميجا على الموبايل
+function smallImg(url: string, width = 500) {
+  if (url.includes("supabase.co")) {
+    return `${url}${url.includes("?") ? "&" : "?"}width=${width}&quality=70`;
+  }
+  return url;
+}
 
 export default function DbProductCard({ product }: { product: DbProduct }) {
   const { final, hasDiscount, percentOff } = priceInfo(product);
@@ -14,7 +23,12 @@ export default function DbProductCard({ product }: { product: DbProduct }) {
       <div className="relative h-44 grid place-items-center bg-gradient-to-b from-white/5 to-transparent overflow-hidden">
         {img ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={img} alt={product.name} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+          <img
+            src={smallImg(img)}
+            alt={product.name}
+            loading="lazy"
+            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          />
         ) : (
           <span className="text-6xl group-hover:scale-110 transition-transform duration-300">{product.emoji ?? "📦"}</span>
         )}
@@ -30,6 +44,7 @@ export default function DbProductCard({ product }: { product: DbProduct }) {
           <PriceGate price={final} compact />
           <span className="text-xs text-white/40 group-hover:text-orange-400 transition font-bold">التفاصيل ←</span>
         </div>
+        <AddToCartButton item={{ id: product.id, name: product.name, price: final, emoji: product.emoji ?? "📦", image: product.images?.[0] }} />
       </div>
     </Link>
   );
