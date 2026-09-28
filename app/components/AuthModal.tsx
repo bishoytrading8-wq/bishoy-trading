@@ -12,7 +12,7 @@ const GOVS = [
   "شمال سيناء", "جنوب سيناء", "دمياط",
 ];
 
-const inputCls = "w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-sm placeholder-white/40 outline-none focus:border-orange-500/70 focus:bg-white/10 transition";
+const inputCls = "w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3.5 text-sm placeholder-white/40 outline-none focus:border-orange-500/80 focus:bg-white/10 focus:shadow-lg focus:shadow-orange-500/10 transition-all duration-300";
 
 function GoogleG() {
   return (
@@ -66,27 +66,26 @@ export default function AuthModal({ open, initialMode = "login", onClose }: {
   const errAr = (m: string) => {
     const s = m.toLowerCase();
     if (s.includes("invalid login")) return "الإيميل أو كلمة السر مش صح ✗";
-    if (s.includes("not confirmed")) return "فعّل إيميلك من رسالة التأكيد وبعدين سجّل الدخول";
+    if (s.includes("not confirmed")) return "فعّل إيميلك من رسالة التأكيد، وبعدين سجّل الدخول";
     if (s.includes("already registered")) return "الإيميل ده مسجل قبل كده — سجّل الدخول مباشرة";
-    if (s.includes("rate limit")) return "محاولات كتير — استنى دقيقة وجرّب تاني";
+    if (s.includes("rate limit")) return "محاولات كثيرة، انتظر دقيقة ثم جرّب مرة أخرى";
     if (s.includes("signups not allowed")) return "التسجيل مقفول مؤقتًا — كلمنا واتساب وهنظبطها لك";
-    return m || "حصل خطأ غير متوقع — جرّب تاني";
+    return m || "حدث خطأ غير متوقع، جرّب تاني";
   };
 
-  // 📧 استرجاع كلمة السر — بنبعت لينك على إيميله
   const doReset = async () => {
     setErr(""); setOk("");
-    if (!email.trim() || !email.includes("@")) { setErr("اكتب إيميلك في الخانة فوق وبعدين دوس نسيت كلمة السر"); return; }
+    if (!email.trim() || !email.includes("@")) { setErr("اكتب إيميلك في الخانة فوق، ثم اضغط نسيت كلمة السر"); return; }
     setResetting(true);
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: window.location.origin + "/reset-password" });
     setResetting(false);
     if (error) { setErr("حصل خطأ — اتأكد إن الإيميل مكتوب صح"); return; }
-    setOk("✓ بعتنا لينك تغيير كلمة السر على إيميلك — افتحه واتبع التعليمات 📬");
+    setOk("✓ أرسلنا رابط تغيير كلمة السر إلى بريدك — افتحه واتبع التعليمات 📬");
   };
 
   const doLogin = async () => {
     setErr(""); setOk("");
-    if (!email.trim() || !pass) { setErr("اكتب الإيميل وكلمة السر الأول"); return; }
+    if (!email.trim() || !pass) { setErr("اكتب الإيميل وكلمة السر أولاً"); return; }
     setBusy(true);
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password: pass });
     setBusy(false);
@@ -96,12 +95,12 @@ export default function AuthModal({ open, initialMode = "login", onClose }: {
 
   const doRegister = async () => {
     setErr(""); setOk("");
-    if (!first.trim() || !last.trim()) { setErr("اكتب اسمك الأول واسم العيلة"); return; }
+    if (!first.trim() || !last.trim()) { setErr("اكتب اسمك الأول واسم العائلة"); return; }
     if (!/^01[0-9]{9}$/.test(phone)) { setErr("رقم التليفون لازم 11 رقم ويبدأ بـ 01"); return; }
-    if (!gov) { setErr("اختار محافظتك"); return; }
-    if (!regEmail.includes("@")) { setErr("اكتب إيميل صحيح"); return; }
+    if (!gov) { setErr("اختر محافظتك"); return; }
+    if (!regEmail.includes("@")) { setErr("اكتب بريدًا إلكترونيًا صحيحًا"); return; }
     if (regPass.length < 6) { setErr("كلمة السر لازم 6 حروف على الأقل"); return; }
-    if (regPass !== regPass2) { setErr("كلمة السر وتأكيدها مش زي بعض"); return; }
+    if (regPass !== regPass2) { setErr("كلمة السر وتأكيدها غير متطابقين"); return; }
 
     setBusy(true);
     const { error } = await supabase.auth.signUp({
@@ -121,7 +120,7 @@ export default function AuthModal({ open, initialMode = "login", onClose }: {
     if (error) { setErr(errAr(error.message)); return; }
     setMode("login");
     setEmail(regEmail.trim());
-    setOk("✓ اتعمل حسابك بنجاح — سجّل دخول دلوقتي");
+    setOk("✓ تم إنشاء حسابك بنجاح — سجّل الدخول الآن");
     setFirst(""); setLast(""); setPhone(""); setWhatsapp("");
     setGov(""); setRegEmail(""); setRegPass(""); setRegPass2("");
   };
@@ -129,49 +128,59 @@ export default function AuthModal({ open, initialMode = "login", onClose }: {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] grid place-items-center p-4 bg-black/70 backdrop-blur-sm" onClick={onClose}>
-      <div className="relative w-full max-w-md rounded-3xl bg-[#101a30] border border-white/10 p-7 shadow-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <button onClick={onClose} aria-label="إغلاق" className="absolute top-4 left-4 w-8 h-8 grid place-items-center rounded-full bg-white/5 hover:bg-white/10 text-white/60">✕</button>
+    <div className="fixed inset-0 z-[100] grid place-items-center p-4 bg-black/75 backdrop-blur-sm modal-backdrop" onClick={onClose}>
+      <div className="modal-panel relative w-full max-w-md rounded-3xl bg-[#101a30] border border-white/10 shadow-2xl shadow-black/50 max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+
+        {/* شريط علوي برتقالي رفيع — لمسة هوية */}
+        <div className="h-1 rounded-t-3xl bg-gradient-to-l from-orange-500 via-orange-400 to-orange-500" />
+
+        <button onClick={onClose} aria-label="إغلاق" className="absolute top-4 left-4 w-9 h-9 grid place-items-center rounded-full bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition">✕</button>
 
         {mode === "login" ? (
           <>
-            <h2 className="text-2xl font-black text-center">تسجيل الدخول</h2>
-            <p className="text-center text-xs text-white/50 mt-2">لمعرفة سعر المنتجات يرجى تسجيل الدخول</p>
-            {ok && <p className="mt-4 rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm font-bold text-green-300 text-center">{ok}</p>}
-            <div className="mt-5 space-y-3">
+            <div className="text-center pt-8 px-7">
+              <h2 className="text-3xl font-black tracking-tight">تسجيل الدخول</h2>
+              <p className="text-xs text-white/50 mt-2.5 leading-relaxed">أسعارنا كاملة متاحة بعد الدخول —<br />التسجيل مجاني ولا يستغرق سوى دقيقة</p>
+            </div>
+            <div className="px-7 pt-6 pb-7 space-y-3.5">
+              {ok && <p className="rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-3.5 text-sm font-bold text-green-300 text-center animate-rise-in">{ok}</p>}
               <input type="email" dir="ltr" className={inputCls} placeholder="البريد الإلكتروني" value={email} onChange={(e) => setEmail(e.target.value)} />
               <input type="password" className={inputCls} placeholder="كلمة السر" value={pass} onChange={(e) => setPass(e.target.value)} onKeyDown={(e) => e.key === "Enter" && doLogin()} />
               {err && (
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 animate-rise-in">
                   <p className="text-xs font-bold text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">{err}</p>
-                  <a href={WHATSAPP_LINK("مساعدة: عندي مشكلة في الدخول لحسابي")} target="_blank" className="block text-center text-[11px] font-bold text-green-400 hover:underline">محتاج مساعدة؟ كلمنا واتساب 💬</a>
+                  <a href={WHATSAPP_LINK("مساعدة: عندي مشكلة في الدخول لحسابي")} target="_blank" className="block text-center text-[11px] font-bold text-green-400 hover:underline">تحتاج مساعدة؟ راسلنا على واتساب 💬</a>
                 </div>
               )}
-              <button onClick={doLogin} disabled={busy} className="w-full bg-orange-500 hover:bg-orange-400 disabled:opacity-60 rounded-xl py-3.5 font-extrabold transition flex items-center justify-center gap-2">
+              <button onClick={doLogin} disabled={busy} className="w-full bg-orange-500 hover:bg-orange-400 active:scale-[0.98] disabled:opacity-60 rounded-xl py-4 font-extrabold transition-all duration-300 flex items-center justify-center gap-2 shadow-lg shadow-orange-500/25">
                 {busy && <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />}
-                {busy ? "جاري الدخول..." : "دخول"}
+                {busy ? "جارٍ الدخول..." : "دخول"}
               </button>
+              <div className="text-center space-y-2 pt-1">
+                <button onClick={() => { setMode("register"); setErr(""); setOk(""); }} className="block mx-auto text-xs font-bold text-orange-400 hover:underline">
+                  أول مرة معانا؟ أنشئ حسابك مجانًا
+                </button>
+                <button onClick={doReset} disabled={resetting} className="block mx-auto text-xs text-white/50 hover:text-white/80 font-bold hover:underline transition">
+                  {resetting ? "جارٍ الإرسال..." : "نسيت كلمة السر؟ 📧"}
+                </button>
+              </div>
             </div>
-            <button onClick={() => { setMode("register"); setErr(""); setOk(""); }} className="block mx-auto mt-4 text-xs text-orange-400 font-bold hover:underline">
-              أول مرة معانا؟ اعمل حسابك مجانًا
-            </button>
-            <button onClick={doReset} disabled={resetting} className="block mx-auto mt-2 text-xs text-white/50 hover:text-white/80 font-bold hover:underline transition">
-              {resetting ? "جاري الإرسال..." : "نسيت كلمة السر؟ 📧"}
-            </button>
           </>
         ) : (
           <>
-            <h2 className="text-2xl font-black text-center">حساب جديد</h2>
-            <p className="text-center text-xs text-white/50 mt-2">بياناتك عندنا في أمان — ونتواصل معاك بأحسن سعر 🤝</p>
-            <div className="mt-5 space-y-3">
+            <div className="text-center pt-8 px-7">
+              <h2 className="text-3xl font-black tracking-tight">حساب جديد</h2>
+              <p className="text-xs text-white/50 mt-2.5 leading-relaxed">بياناتك محفوظة بأمان —<br />ونتواصل معك بأفضل سعر 🤝</p>
+            </div>
+            <div className="px-7 pt-6 pb-7 space-y-3.5">
               <div className="grid grid-cols-2 gap-3">
                 <input className={inputCls} placeholder="الاسم الأول" value={first} onChange={(e) => setFirst(e.target.value)} />
-                <input className={inputCls} placeholder="اسم العيلة" value={last} onChange={(e) => setLast(e.target.value)} />
+                <input className={inputCls} placeholder="اسم العائلة" value={last} onChange={(e) => setLast(e.target.value)} />
               </div>
               <input inputMode="numeric" className={inputCls} placeholder="رقم التليفون (11 رقم — يبدأ بـ 01)" value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 11))} />
               <input inputMode="numeric" className={inputCls} placeholder="رقم واتساب — لو مختلف (اختياري)" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value.replace(/\D/g, "").slice(0, 11))} />
               <select className={inputCls} value={gov} onChange={(e) => setGov(e.target.value)}>
-                <option value="" className="bg-[#101a30]">اختار محافظتك</option>
+                <option value="" className="bg-[#101a30]">اختر محافظتك</option>
                 {GOVS.map((g) => <option key={g} value={g} className="bg-[#101a30]">{g}</option>)}
               </select>
               <input type="email" dir="ltr" className={inputCls} placeholder="البريد الإلكتروني" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} />
@@ -180,31 +189,33 @@ export default function AuthModal({ open, initialMode = "login", onClose }: {
                 <input type="password" className={inputCls} placeholder="تأكيد كلمة السر" value={regPass2} onChange={(e) => setRegPass2(e.target.value)} />
               </div>
               {err && (
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 animate-rise-in">
                   <p className="text-xs font-bold text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">{err}</p>
-                  <a href={WHATSAPP_LINK("مساعدة: عندي مشكلة في إنشاء الحساب")} target="_blank" className="block text-center text-[11px] font-bold text-green-400 hover:underline">محتاج مساعدة؟ كلمنا واتساب 💬</a>
+                  <a href={WHATSAPP_LINK("مساعدة: عندي مشكلة في إنشاء الحساب")} target="_blank" className="block text-center text-[11px] font-bold text-green-400 hover:underline">تحتاج مساعدة؟ راسلنا على واتساب 💬</a>
                 </div>
               )}
-              <button onClick={doRegister} disabled={busy} className="w-full bg-orange-500 hover:bg-orange-400 disabled:opacity-60 rounded-xl py-3.5 font-extrabold transition flex items-center justify-center gap-2">
+              <button onClick={doRegister} disabled={busy} className="w-full bg-orange-500 hover:bg-orange-400 active:scale-[0.98] disabled:opacity-60 rounded-xl py-4 font-extrabold transition-all duration-300 flex items-center justify-center gap-2 shadow-lg shadow-orange-500/25">
                 {busy && <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />}
-                {busy ? "جاري الإنشاء..." : "إنشاء الحساب ✨"}
+                {busy ? "جارٍ الإنشاء..." : "إنشاء الحساب ✨"}
+              </button>
+              <button onClick={() => { setMode("login"); setErr(""); setOk(""); }} className="block mx-auto text-xs text-white/60 font-bold hover:underline">
+                لدي حساب بالفعل — تسجيل الدخول
               </button>
             </div>
-            <button onClick={() => { setMode("login"); setErr(""); setOk(""); }} className="block mx-auto mt-4 text-xs text-white/60 font-bold hover:underline">
-              عندي حساب بالفعل — تسجيل الدخول
-            </button>
           </>
         )}
 
-        <div className="flex items-center gap-3 my-5">
-          <span className="h-px flex-1 bg-white/10" />
-          <span className="text-xs text-white/40">أو</span>
-          <span className="h-px flex-1 bg-white/10" />
+        <div className="px-7 pb-7">
+          <div className="flex items-center gap-3 my-1">
+            <span className="h-px flex-1 bg-white/10" />
+            <span className="text-[11px] text-white/40 font-bold">أو</span>
+            <span className="h-px flex-1 bg-white/10" />
+          </div>
+          <button disabled className="w-full rounded-xl bg-white text-[#1f2937] py-3.5 font-extrabold text-sm flex items-center justify-center gap-3 opacity-60 cursor-not-allowed">
+            <GoogleG /> الدخول بحساب جوجل
+            <span className="text-[10px] bg-gray-200 text-gray-600 rounded-full px-2 py-0.5 font-bold">قريبًا</span>
+          </button>
         </div>
-        <button disabled className="w-full rounded-xl bg-white text-[#1f2937] py-3 font-extrabold text-sm flex items-center justify-center gap-3 opacity-60 cursor-not-allowed">
-          <GoogleG /> الدخول بحساب جوجل
-          <span className="text-[10px] bg-gray-200 text-gray-600 rounded-full px-2 py-0.5 font-bold">قريبًا</span>
-        </button>
       </div>
     </div>
   );

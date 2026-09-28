@@ -31,7 +31,7 @@ export default function CatsGrid({
         <Link
           key={c.slug}
           href={`/category/${c.slug}`}
-          className={`group rounded-3xl bg-[#101a30] border border-white/10 hover:border-orange-500/50 p-6 transition-all duration-300 hover:-translate-y-1.5 ${mounted ? "animate-rise-in" : "opacity-0"}`}
+          className={`group rounded-3xl bg-[#101a30] border border-white/10 hover:border-orange-500/50 hover:-translate-y-1.5 hover:shadow-xl hover:shadow-orange-500/10 p-6 transition-all duration-300 ${mounted ? "animate-rise-in" : "opacity-0"}`}
           style={{ animationDelay: `${i * 120}ms` }}
         >
           <div className="flex items-start justify-between">
@@ -44,11 +44,11 @@ export default function CatsGrid({
               <span className="text-5xl inline-block group-hover:scale-110 group-hover:-rotate-6 transition-transform duration-300">{c.emoji}</span>
             )}
             <span className="text-xs bg-orange-500/10 text-orange-300 border border-orange-500/20 rounded-full px-3 py-1 font-bold">
-              {counts[c.slug] ?? 0} منتجات
+              {counts[c.slug] ?? 0} منتج
             </span>
           </div>
           <h3 className="text-xl font-extrabold mt-4 group-hover:text-orange-400 transition">{c.name}</h3>
-          <p className="text-sm text-white/50 mt-1">{c.tagline}</p>
+          <p className="text-sm text-white/50 mt-1 leading-relaxed">{c.tagline}</p>
           <span className="inline-flex items-center gap-2 text-sm font-bold text-orange-400 mt-4">
             استعرض القسم <span className="group-hover:-translate-x-1 transition-transform inline-block">←</span>
           </span>

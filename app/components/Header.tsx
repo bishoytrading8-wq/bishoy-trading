@@ -11,6 +11,7 @@ import { useAuth } from "../lib/AuthProvider";
 import ThemeToggle from "./ThemeToggle";
 import CartButton from "./CartButton";
 import ViewToggle from "./ViewToggle";
+import SearchButton from "./SearchButton";
 
 const NAV = [
   { href: "/", label: "الرئيسية" },
@@ -54,9 +55,6 @@ export default function Header() {
   const linkCls = (href: string) =>
     `px-4 py-2 rounded-lg text-sm font-bold transition ${isActive(href) ? "text-orange-400 bg-orange-500/10" : "text-white/80 hover:text-white hover:bg-white/5"}`;
 
-  // 🧾 لينك طلباتي — للعملاء المسجلين بس
-  const fullNav = [...NAV, ...(user ? [{ href: "/my-orders", label: "🧾 طلباتي" }] : [])];
-
   const roleBadge =
     role?.kind === "owner" ? "👑 مالك" :
     role?.kind === "staff" ? "🧑‍💼 موظف" : null;
@@ -84,7 +82,7 @@ export default function Header() {
         </Link>
 
         <nav className="hidden lg:flex items-center gap-1">
-          {fullNav.map((l) => <Link key={l.href} href={l.href} className={linkCls(l.href)}>{l.label}</Link>)}
+          {fullNavList(user).map((l) => <Link key={l.href} href={l.href} className={linkCls(l.href)}>{l.label}</Link>)}
           <div className="relative" onMouseEnter={() => setCatsOpen(true)} onMouseLeave={() => setCatsOpen(false)}>
             <button className={`flex items-center gap-1 px-4 py-2 rounded-lg text-sm font-bold transition ${pathname.startsWith("/category") ? "text-orange-400 bg-orange-500/10" : "text-white/80 hover:text-white hover:bg-white/5"}`}>
               الأقسام <span className={`inline-block text-[10px] transition ${catsOpen ? "rotate-180" : ""}`}>▼</span>
@@ -104,6 +102,7 @@ export default function Header() {
         </nav>
 
         <div className="hidden lg:flex items-center gap-2">
+          <SearchButton />
           <ThemeToggle />
           <ViewToggle />
           <CartButton />
@@ -136,6 +135,11 @@ export default function Header() {
 
       {open && (
         <div className="lg:hidden border-t border-white/10 bg-[#0b1220]/95 backdrop-blur-lg px-4 py-4 max-h-[70vh] overflow-y-auto">
+          {/* 🔍 بحث في المنتجات — صف كامل */}
+          <div className="mb-3 [&>button]:w-full [&>button]:rounded-xl [&>button]:bg-white/5 [&>button]:border [&>button]:border-white/10 [&>button]:px-4 [&>button]:py-3 [&>button]:h-auto">
+            <SearchButton />
+          </div>
+
           <Link href="/cart" className="flex items-center justify-between rounded-xl bg-white/5 border border-white/10 px-4 py-3 mb-3">
             <span className="text-sm font-bold text-white/80">🛒 طلباتي (السلة)</span>
             <span className="text-orange-400 text-sm font-bold">فتح ←</span>
@@ -146,7 +150,7 @@ export default function Header() {
             <ThemeToggle />
           </div>
 
-          {fullNav.map((l) => (
+          {fullNavList(user).map((l) => (
             <Link key={l.href} href={l.href} className={`block px-4 py-3 rounded-xl font-bold transition ${isActive(l.href) ? "text-orange-400 bg-orange-500/10" : "text-white/80 hover:bg-white/5"}`}>{l.label}</Link>
           ))}
           <p className="text-xs text-white/40 font-bold pt-4 pb-1 px-4">الأقسام</p>
@@ -177,4 +181,14 @@ export default function Header() {
       )}
     </header>
   );
+}
+
+// 🧾 لينك طلباتي — للعملاء المسجلين بس
+function fullNavList(user: { email: string } | null) {
+  return [
+    { href: "/", label: "الرئيسية" },
+    { href: "/about", label: "من نحن" },
+    { href: "/contact", label: "تواصل معنا" },
+    ...(user ? [{ href: "/my-orders", label: "🧾 طلباتي" }] : []),
+  ];
 }

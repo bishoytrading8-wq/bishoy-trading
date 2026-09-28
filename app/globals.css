@@ -185,3 +185,26 @@ html.light ::-webkit-scrollbar-thumb { background: #cbd5e1; }
   background: #fff;
   animation: twinkle 3s ease-in-out infinite;
 }
+
+/* ═══ 🎨 اللمسات النهائية — مودال + نصوص فاخرة ═══ */
+
+/* ظهور المودال بحركة ناعمة (scale + rise) */
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(16px) scale(.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.modal-panel { animation: modal-in .35s cubic-bezier(.22,1,.36,1) both; }
+.modal-backdrop { animation: fadeIn .25s ease-out both; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* عناوين عربية بحرفية أعلى — توازن الأسطر ومنع التقطيع الوحش */
+h1, h2, h3, h4 {
+  text-wrap: balance;
+  line-height: 1.35;
+}
+
+/* الفقرات الطويلة تتوزع بشكل مريح للعين */
+p { text-wrap: pretty; }
+
+/* الأرقام بالإنجليزي جوه نص عربي تفضل مرتبة */
+.nums { font-feature-settings: "tnum"; }
