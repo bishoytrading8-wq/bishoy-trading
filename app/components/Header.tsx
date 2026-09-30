@@ -184,7 +184,7 @@ export default function Header() {
 }
 
 // 🧾 لينك طلباتي — للعملاء المسجلين بس
-function fullNavList(user: { email: string } | null) {
+function fullNavList(user: { email?: string } | null) {
   return [
     { href: "/", label: "الرئيسية" },
     { href: "/about", label: "من نحن" },
