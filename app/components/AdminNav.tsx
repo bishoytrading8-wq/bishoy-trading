@@ -13,6 +13,7 @@ const LINKS = [
   { href: "/admin/categories", label: "🗂️ الأقسام" },
   { href: "/admin/staff", label: "🧑‍💼 الموظفين" },
   { href: "/admin/clients", label: "📇 العملاء" },
+  { href: "/admin/about", label: "📄 من نحن" },
   { href: "/admin/settings", label: "⚙️ الإعدادات" },
 ];
 
