@@ -21,6 +21,7 @@ export interface DbProduct {
   category_slug: string;
   images: string[];
   sizes: string[] | null;
+  size_prices: { size: string; price: number }[] | null;
   colors: string[] | null;
   sku: string | null;
   stock_status: string | null;
@@ -41,9 +42,9 @@ export interface DbCategory {
   is_active: boolean;
 }
 
-const SELECT = "*, brand:brands(id, name), sizes, colors, sku, stock_status, stock_qty, specs, is_draft";
+const SELECT = "*, brand:brands(id, name), sizes, colors, size_prices, sku, stock_status, stock_qty, specs, is_draft";
 
-// 💰 حساب السعر النهائي — الخصم يُحسب فقط إذا كان التاريخ ضمن فترته
+// 💰 حساب السعر النهائي
 export function priceInfo(p: DbProduct) {
   const today = new Date().toISOString().slice(0, 10);
   const active =
@@ -61,7 +62,6 @@ export function priceInfo(p: DbProduct) {
   return { base, final, hasDiscount: true, percentOff };
 }
 
-// 🗂️ الأقسام
 export async function getCategories(onlyActive = true): Promise<DbCategory[]> {
   let q = supabase.from("categories").select("*").order("sort_order");
   if (onlyActive) q = q.eq("is_active", true);
@@ -93,7 +93,6 @@ export async function countProducts(): Promise<number> {
   return count ?? 0;
 }
 
-// 🌐 للزوار: المنتجات المنشورة فقط (المسودات مش هتظهر)
 export async function getProductsByCategory(slug: string): Promise<DbProduct[]> {
   const { data } = await supabase
     .from("products")
@@ -113,13 +112,11 @@ export async function getAllDbProducts(): Promise<DbProduct[]> {
   return (data as DbProduct[]) ?? [];
 }
 
-// 👁️ بدون فلتر مسودات — عشان المعاينة تشتغل حتى للمسودات
 export async function getDbProduct(id: string): Promise<DbProduct | null> {
   const { data } = await supabase.from("products").select(SELECT).eq("id", id).maybeSingle();
   return (data as DbProduct) ?? null;
 }
 
-// 🤝 منتجات مشابهة: نفس الماركة أولًا — ثم نفس القسم (منشورة فقط)
 export async function getSimilar(p: DbProduct, limit = 4): Promise<DbProduct[]> {
   const { data } = await supabase
     .from("products")

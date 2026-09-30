@@ -36,6 +36,7 @@ export default function AdminPage() {
   const [images, setImages] = useState<string[]>([]);
   const [sizes, setSizes] = useState<string[]>([]);
   const [sizeInput, setSizeInput] = useState("");
+  const [sizePrices, setSizePrices] = useState<{ size: string; price: string }[]>([]);
   const [colors, setColors] = useState<string[]>([]);
   const [colorInput, setColorInput] = useState("");
   const [sku, setSku] = useState("");
@@ -56,7 +57,6 @@ export default function AdminPage() {
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [restoreBanner, setRestoreBanner] = useState(false);
 
-  // ✅ تحديد جماعي
   const [selected, setSelected] = useState<string[]>([]);
   const [bulkPct, setBulkPct] = useState("");
   const [bulkBrand, setBulkBrand] = useState("");
@@ -84,17 +84,17 @@ export default function AdminPage() {
     }
   }, [can, loadBrands, loadItems]);
 
-  // 💾 حفظ مسودة تلقائي في المتصفح — لو الصفحة اتقفت مش هتضيع
+  // 💾 حفظ مسودة تلقائي
   useEffect(() => {
     if (editingId) return;
     if (!name.trim() && !price && !description.trim() && images.length === 0) return;
     const t = setTimeout(() => {
       try {
-        localStorage.setItem(DRAFT_KEY, JSON.stringify({ name, price, discountPercent, discountAmount, discountFrom, discountTo, description, features, brandId, categorySlug, images, sizes, colors, sku, stockStatus, stockQty, specs }));
+        localStorage.setItem(DRAFT_KEY, JSON.stringify({ name, price, discountPercent, discountAmount, discountFrom, discountTo, description, features, brandId, categorySlug, images, sizes, sizePrices, colors, sku, stockStatus, stockQty, specs }));
       } catch {}
     }, 1500);
     return () => clearTimeout(t);
-  }, [name, price, discountPercent, discountAmount, discountFrom, discountTo, description, features, brandId, categorySlug, images, sizes, colors, sku, stockStatus, stockQty, specs, editingId]);
+  }, [name, price, discountPercent, discountAmount, discountFrom, discountTo, description, features, brandId, categorySlug, images, sizes, sizePrices, colors, sku, stockStatus, stockQty, specs, editingId]);
 
   useEffect(() => {
     try {
@@ -115,7 +115,8 @@ export default function AdminPage() {
       setDiscountAmount(p.discountAmount ?? ""); setDiscountFrom(p.discountFrom ?? ""); setDiscountTo(p.discountTo ?? "");
       setDescription(p.description ?? ""); setFeatures(p.features ?? []); setBrandId(p.brandId ?? "");
       setCategorySlug(p.categorySlug ?? ""); setImages(p.images ?? []);
-      setSizes(p.sizes ?? []); setColors(p.colors ?? []);
+      setSizes(p.sizes ?? []); setSizePrices(p.sizePrices ?? []);
+      setColors(p.colors ?? []);
       setSku(p.sku ?? ""); setStockStatus(p.stockStatus ?? "available"); setStockQty(p.stockQty ?? "");
       setSpecs(p.specs ?? []);
       setMsg("✓ تم استرجاع المسودة المحفوظة");
@@ -135,8 +136,7 @@ export default function AdminPage() {
     setMsg("");
     for (const file of Array.from(files)) {
       const compressed = await compressImage(file);
-      const ext = "jpg";
-      const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
       const { error } = await supabase.storage.from("product-images").upload(path, compressed);
       if (!error) {
         const { data } = supabase.storage.from("product-images").getPublicUrl(path);
@@ -148,7 +148,6 @@ export default function AdminPage() {
     setUploading(false);
   };
 
-  // 🖱️ سحب وإفلات لترتيب الصور
   const reorderImages = (from: number, to: number) => {
     setImages((prev) => {
       const arr = [...prev];
@@ -162,7 +161,10 @@ export default function AdminPage() {
     const n = newBrand.trim();
     if (!n) return;
     const { error } = await supabase.from("brands").insert({ name: n });
-    if (error) { setMsg(error.message.includes("duplicate") ? "الماركة موجودة بالفعل" : "خطأ في إضافة الماركة"); return; }
+    if (error) {
+      setMsg(error.message.includes("duplicate") ? "الماركة موجودة بالفعل" : "خطأ في إضافة الماركة");
+      return;
+    }
     const { data } = await supabase.from("brands").select("*").eq("name", n).single();
     await loadBrands();
     setBrandId(data.id);
@@ -177,7 +179,6 @@ export default function AdminPage() {
     loadBrands();
   };
 
-  // 💾 الحفظ — publish أو مسودة — بيرجع id المنتج
   const saveProduct = async (asDraft: boolean, silent = false): Promise<string | null> => {
     if (!silent) setMsg("");
     if (!name.trim()) { if (!silent) setMsg("✍️ اكتب اسم المنتج"); return null; }
@@ -203,6 +204,7 @@ export default function AdminPage() {
       category_slug: categorySlug,
       images,
       sizes: sizes.length ? sizes : null,
+      size_prices: sizePrices.filter((sp) => sp.price.trim()).map((sp) => ({ size: sp.size, price: Number(sp.price) })),
       colors: colors.length ? colors : null,
       sku: sku.trim() || null,
       stock_status: stockStatus,
@@ -239,10 +241,7 @@ export default function AdminPage() {
 
   const publish = async () => {
     const ok = await saveProduct(false);
-    if (ok && !editingId) {
-      // 🔄 حفظ القسم والماركة بعد النشر — لإضافة المنتج اللي بعده بسرعة
-      resetFormKeepContext();
-    }
+    if (ok && !editingId) resetFormKeepContext();
   };
 
   const saveDraft = async () => {
@@ -253,11 +252,11 @@ export default function AdminPage() {
     setName(""); setPrice(""); setDiscountPercent(""); setDiscountAmount("");
     setDiscountFrom(""); setDiscountTo(""); setDescription("");
     setFeatures([]); setFeatureInput(""); setImages([]);
-    setSizes([]); setSizeInput(""); setColors([]); setColorInput("");
+    setSizes([]); setSizeInput(""); setSizePrices([]);
+    setColors([]); setColorInput("");
     setSku(""); setStockStatus("available"); setStockQty(""); setSpecs([]);
     setSpecKey(""); setSpecVal("");
     setEditingId(null); setIsDraft(false);
-    // ✅ categorySlug و brandId بيفضلوا زي ما هم — لإضافة المشابه بسرعة
   };
 
   const resetForm = () => {
@@ -282,6 +281,7 @@ export default function AdminPage() {
     setImages(p.images ?? []);
     setSizes(p.sizes ?? []);
     setSizeInput("");
+    setSizePrices((p.size_prices ?? []).map((sp) => ({ size: sp.size, price: String(sp.price) })));
     setColors(p.colors ?? []);
     setColorInput("");
     setSku(p.sku ?? "");
@@ -292,7 +292,6 @@ export default function AdminPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // 📋 نسخة من منتج — يفتح الفورم معبّى بكل حاجة كمنتج جديد
   const duplicateItem = (p: DbProduct) => {
     editItem(p);
     setEditingId(null);
@@ -301,13 +300,12 @@ export default function AdminPage() {
     setMsg("📋 اتنسخ محتوى المنتج — غيّر الاسم والسعر واضغط نشر");
   };
 
-  // 👁️ معاينة قبل النشر
   const previewProduct = async () => {
     if (editingId) {
       window.open(`/product/${editingId}`, "_blank");
       return;
     }
-    const id = await saveProduct(true, true); // مسودة صامتة
+    const id = await saveProduct(true, true);
     if (id) window.open(`/product/${id}`, "_blank");
   };
 
@@ -317,7 +315,6 @@ export default function AdminPage() {
     loadItems();
   };
 
-  // ✅ تعديل جماعي
   const toggleSelect = (id: string) => {
     setSelected((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
   };
@@ -364,14 +361,17 @@ export default function AdminPage() {
 
   const exportProducts = () => {
     exportCSV("products.csv",
-      ["الاسم","القسم","الماركة","السعر","الخصم %","السعر النهائي","المقاسات","الألوان","SKU","المخزون","المواصفات","الوصف","مميزات","حالة"],
+      ["الاسم","القسم","الماركة","السعر الأساسي","الخصم %","السعر النهائي","المقاسات بأسعارها","الألوان","SKU","المخزون","المواصفات","الوصف","مميزات","حالة"],
       items.map((p) => {
         const { final, hasDiscount } = priceInfo(p);
         const cat = cats.find((c) => c.slug === p.category_slug);
         return [
           p.name, cat?.name ?? p.category_slug, p.brand?.name ?? "", p.price,
-          p.discount_percent ?? "", hasDiscount ? final : "", 
-          (p.sizes ?? []).join(" | "), (p.colors ?? []).join(" | "),
+          p.discount_percent ?? "", hasDiscount ? final : "",
+          (p.size_prices ?? []).length > 0
+            ? (p.size_prices ?? []).map((sp) => `${sp.size}: ${sp.price} ج.م`).join(" | ")
+            : "سعر موحد",
+          (p.colors ?? []).join(" | "),
           p.sku ?? "", p.stock_status === "available" ? "متاح" : "غير متاح",
           (p.specs ?? []).map((s) => `${s.k}: ${s.v}`).join(" | "),
           p.description ?? "", (p.features ?? []).join(" | "),
@@ -413,7 +413,6 @@ export default function AdminPage() {
         <div className={`rounded-xl border px-4 py-3 text-sm font-bold mb-6 animate-rise-in ${msg.startsWith("✓") ? "bg-green-500/10 border-green-500/30 text-green-300" : "bg-red-500/10 border-red-500/30 text-red-300"}`}>{msg}</div>
       )}
 
-      {/* 💾 لافتة استرجاع المسودة */}
       {restoreBanner && (
         <div className="rounded-2xl border border-blue-500/40 bg-blue-500/10 px-5 py-4 mb-6 flex flex-wrap items-center justify-between gap-3 animate-rise-in">
           <p className="text-sm font-bold text-blue-200">💾 وجدنا مسودة محفوظة من جلسة سابقة — هل تسترجعها؟</p>
@@ -439,7 +438,7 @@ export default function AdminPage() {
               <span className="inline-grid place-items-center w-10 h-10 rounded-xl bg-orange-500/15 text-orange-400 text-lg">📦</span>
               <div className="flex-1">
                 <h3 className="font-extrabold">الأساسيات</h3>
-                <p className="text-[11px] text-white/40">الاسم والسعر والقسم</p>
+                <p className="text-[11px] text-white/40">الاسم والسعر والقسم — الحد الأدنى للنشر</p>
               </div>
               <span className="text-white/30 group-open:rotate-180 transition-transform">▼</span>
             </summary>
@@ -450,7 +449,7 @@ export default function AdminPage() {
               </div>
               <div className="grid sm:grid-cols-2 gap-3">
                 <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                  <label className={labelCls}>💰 السعر (ج.م)</label>
+                  <label className={labelCls}>💰 السعر الأساسي (ج.م)</label>
                   <input className={inputCls} inputMode="numeric" placeholder="1650" value={price} onChange={(e) => setPrice(e.target.value.replace(/[^\d.]/g, ""))} />
                 </div>
                 <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
@@ -475,7 +474,7 @@ export default function AdminPage() {
             </summary>
             <div className="px-5 pb-5 space-y-4">
               <div className="grid sm:grid-cols-3 gap-3">
-                <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4 sm:col-span-1">
+                <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
                   <label className={labelCls}>🔢 كود المنتج SKU</label>
                   <input dir="ltr" className={inputCls} placeholder="LB-BLW-008" value={sku} onChange={(e) => setSku(e.target.value)} />
                 </div>
@@ -520,7 +519,6 @@ export default function AdminPage() {
                   ))}
                 </div>
               )}
-              <p className="text-[11px] text-white/30">💡 اقتراحات: القدرة • السعة • الضمان • بلد المنشأ • المادة • استهلاك الكهرباء</p>
             </div>
           </details>
 
@@ -593,34 +591,55 @@ export default function AdminPage() {
             </div>
           </details>
 
-          {/* ─── الخيارات ─── */}
-          <details className="form-section rounded-3xl bg-[#101a30] border border-white/10 overflow-hidden">
+          {/* ─── الخيارات: مقاسات بأسعار + ألوان ─── */}
+          <details open className="form-section rounded-3xl bg-[#101a30] border border-white/10 overflow-hidden">
             <summary className="flex items-center gap-3 p-5 cursor-pointer list-none select-none">
               <span className="inline-grid place-items-center w-10 h-10 rounded-xl bg-violet-500/15 text-violet-400 text-lg">🎨</span>
               <div className="flex-1">
                 <h3 className="font-extrabold">الخيارات المتاحة</h3>
-                <p className="text-[11px] text-white/40">{sizes.length + colors.length > 0 ? `${sizes.length} مقاسات • ${colors.length} ألوان` : "مقاسات وألوان"}</p>
+                <p className="text-[11px] text-white/40">{sizes.length > 0 ? `${sizes.length} مقاسات` : "مقاسات بأسعار مختلفة + ألوان"}</p>
               </div>
               <span className="text-white/30 group-open:rotate-180 transition-transform">▼</span>
             </summary>
             <div className="px-5 pb-5 space-y-4">
+              {/* 📏 المقاسات — كل مقاس له سعر اختياري */}
               <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <label className={labelCls}>📏 المقاسات</label>
-                <div className="flex gap-2">
-                  <input className={inputCls} placeholder="مثال: 8 بوصة — Enter" value={sizeInput} onChange={(e) => setSizeInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && sizeInput.trim()) { e.preventDefault(); if (!sizes.includes(sizeInput.trim())) setSizes([...sizes, sizeInput.trim()]); setSizeInput(""); } }} />
+                <label className={labelCls}>📏 المقاسات — ممكن تخصص لكل مقاس سعر مختلف</label>
+                <div className="space-y-2">
+                  {sizes.map((s, i) => {
+                    const sp = sizePrices.find((x) => x.size === s);
+                    return (
+                      <div key={s + i} className="flex items-center gap-2">
+                        <span className="shrink-0 inline-flex items-center gap-1 text-xs font-bold bg-violet-500/10 border border-violet-500/30 text-violet-300 rounded-full px-3 py-2">
+                          📏 {s}
+                          <button onClick={() => { setSizes(sizes.filter((_, j) => j !== i)); setSizePrices(sizePrices.filter((x) => x.size !== s)); }} className="text-red-400 hover:text-red-300 font-black" aria-label={`حذف ${s}`}>✕</button>
+                        </span>
+                        <input
+                          inputMode="numeric"
+                          className="flex-1 rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm outline-none focus:border-orange-500/70"
+                          placeholder="سعر خاص بالمقاس (اختياري — فاضي = السعر الأساسي)"
+                          value={sp?.price ?? ""}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^\d.]/g, "");
+                            const others = sizePrices.filter((x) => x.size !== s);
+                            if (val) setSizePrices([...others, { size: s, price: val }]);
+                            else setSizePrices(others);
+                          }}
+                        />
+                        {sp?.price && <span className="shrink-0 text-xs font-bold text-orange-400">ج.م</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="flex gap-2 mt-2">
+                  <input className={inputCls} placeholder="اكتب مقاسًا جديدًا واضغط Enter" value={sizeInput} onChange={(e) => setSizeInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && sizeInput.trim()) { e.preventDefault(); if (!sizes.includes(sizeInput.trim())) { setSizes([...sizes, sizeInput.trim()]); setSizeInput(""); } } }} />
                   <button onClick={() => { if (sizeInput.trim() && !sizes.includes(sizeInput.trim())) { setSizes([...sizes, sizeInput.trim()]); setSizeInput(""); } }} className="shrink-0 w-11 rounded-xl bg-orange-500 hover:bg-orange-400 font-black text-lg transition">＋</button>
                 </div>
                 {sizes.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    {sizes.map((s, i) => (
-                      <span key={s + i} className="inline-flex items-center gap-1.5 text-xs font-bold bg-violet-500/10 border border-violet-500/30 text-violet-300 rounded-full px-3 py-1.5">
-                        📏 {s}
-                        <button onClick={() => setSizes(sizes.filter((_, j) => j !== i))} className="text-red-400 hover:text-red-300 font-black">✕</button>
-                      </span>
-                    ))}
-                  </div>
+                  <p className="text-[11px] text-white/30 mt-2">💡 المقاس اللي من غير سعر = بياخد السعر الأساسي للمنتج</p>
                 )}
               </div>
+
               <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
                 <label className={labelCls}>🎨 الألوان</label>
                 <div className="flex gap-2">
@@ -736,7 +755,6 @@ export default function AdminPage() {
           )}
         </div>
 
-        {/* ✅ شريط التعديل الجماعي */}
         {selected.length > 0 && (
           <div className="sticky top-20 z-30 rounded-2xl border border-orange-500/40 bg-[#101a30] p-4 mb-4 animate-rise-in shadow-2xl shadow-orange-500/10">
             <div className="flex items-center gap-3 flex-wrap">
@@ -750,7 +768,7 @@ export default function AdminPage() {
                 <button onClick={() => bulkSetStock("available")} className="bg-green-500/15 border border-green-500/40 text-green-300 rounded-lg px-3 py-2 text-xs font-bold transition hover:bg-green-500/25">✅ متاح</button>
                 <button onClick={() => bulkSetStock("unavailable")} className="bg-yellow-500/15 border border-yellow-500/40 text-yellow-300 rounded-lg px-3 py-2 text-xs font-bold transition hover:bg-yellow-500/25">🚫 غير متاح</button>
               </div>
-              <select value={bulkBrand} onChange={(e) => { setBulkBrand(e.target.value); }} className="rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-xs outline-none">
+              <select value={bulkBrand} onChange={(e) => setBulkBrand(e.target.value)} className="rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-xs outline-none">
                 <option value="">تحديد بكل الماركة...</option>
                 {brands.map((b) => <option key={b.id} value={b.id} className="bg-[#101a30]">{b.name}</option>)}
               </select>
@@ -785,8 +803,7 @@ export default function AdminPage() {
                   </p>
                   <p className="text-[11px] text-white/40 font-bold mt-0.5">
                     {cat?.name ?? p.category_slug} {p.brand?.name && `• 🏷️ ${p.brand.name}`} • <span className="text-orange-400">{final} ج.م</span>{hasDiscount && " 🔥"}
-                    {p.sku && <span dir="ltr"> • #{p.sku}</span>}
-                    {(p.sizes ?? []).length > 0 && ` • 📏 ${(p.sizes ?? []).length}`}
+                    {(p.size_prices ?? []).length > 0 && ` • 💰 أسعار بالمقاس`}
                   </p>
                 </div>
                 <button onClick={() => duplicateItem(p)} title="نسخة من المنتج" className="shrink-0 text-xs font-bold border border-blue-500/30 text-blue-400 hover:bg-blue-500/10 rounded-lg px-3 py-2 transition">📋</button>
