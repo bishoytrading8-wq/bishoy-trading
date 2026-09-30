@@ -50,6 +50,11 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
           )}
 
           <h1 className="text-3xl lg:text-4xl font-black mt-3">{product.name}</h1>
+                              <div className="flex items-center gap-2 mt-2 flex-wrap">
+            {product.sku && <span className="text-xs text-white/40 font-bold">كود المنتج: <span dir="ltr">{product.sku}</span></span>}
+            {product.stock_status === "unavailable" && <span className="text-xs font-bold bg-red-500/15 border border-red-500/30 text-red-300 rounded-full px-3 py-1">🚫 غير متاح حاليًا</span>}
+            {product.stock_status === "available" && <span className="text-xs font-bold bg-green-500/15 border border-green-500/30 text-green-300 rounded-full px-3 py-1">✅ متاح</span>}
+          </div>
           {product.description && <p className="text-white/60 leading-relaxed mt-4">{product.description}</p>}
 
           {product.features && product.features.length > 0 && (
@@ -74,6 +79,22 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
           <div className="mt-4">
             <ProductOptionsAdd product={product} />
           </div>
+          
+                    {product.specs && product.specs.length > 0 && (
+            <div className="mt-6 rounded-2xl border border-white/10 overflow-hidden">
+              <h3 className="bg-white/5 px-5 py-3 font-black text-sm">🔧 المواصفات الفنية</h3>
+              <table className="w-full text-sm">
+                <tbody>
+                  {product.specs.map((sp, i) => (
+                    <tr key={i} className={i % 2 === 0 ? "bg-white/[0.02]" : ""}>
+                      <td className="px-5 py-2.5 font-bold text-white/70 w-1/3">{sp.k}</td>
+                      <td className="px-5 py-2.5 text-white/60">{sp.v}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
 
           <div className="flex gap-3 mt-4 flex-wrap">
             <a href={`tel:${s.mobile}`} className="bg-orange-500 hover:bg-orange-400 px-7 py-3 rounded-xl font-extrabold transition shadow-lg shadow-orange-500/20">📞 اتصل بنا</a>

@@ -16,6 +16,7 @@ type Result = {
   discount_percent: number | null;
   discount_amount: number | null;
   brand_name: string | null;
+  stock_status: string | null;
 };
 
 function smallImg(url: string, width = 200) {
@@ -33,7 +34,7 @@ export default function SearchOverlay({ open, onClose }: { open: boolean; onClos
   const [active, setActive] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // 🔒 منع تمرير الخلفية + فокус تلقائي
+  // 🔒 منع تمرير الخلفية + فOCUS تلقائي
   useEffect(() => {
     if (open) {
       document.body.style.overflow = "hidden";
@@ -54,14 +55,15 @@ export default function SearchOverlay({ open, onClose }: { open: boolean; onClos
     return () => window.removeEventListener("keydown", h);
   }, [onClose]);
 
-  // 🔍 البحث اللحظي — اسم + وصف + ماركة
+  // 🔍 البحث اللحظي — اسم + وصف + ماركة (المنشور فقط)
   const search = useCallback(async (q: string) => {
     if (q.trim().length < 2) { setResults([]); return; }
     setSearching(true);
     const term = `%${q.trim()}%`;
     const { data } = await supabase
       .from("products")
-      .select("id, name, description, emoji, images, price, discount_percent, discount_amount, brand:brands(name)")
+      .select("id, name, description, emoji, images, price, discount_percent, discount_amount, stock_status, brand:brands(name)")
+      .eq("is_draft", false)
       .or(`name.ilike.${term},description.ilike.${term},brands.name.ilike.${term}`)
       .limit(12);
     setResults(
@@ -70,6 +72,7 @@ export default function SearchOverlay({ open, onClose }: { open: boolean; onClos
         images: p.images ?? [], price: p.price,
         discount_percent: p.discount_percent, discount_amount: p.discount_amount,
         brand_name: p.brand?.name ?? null,
+        stock_status: p.stock_status ?? "available",
       }))
     );
     setSearching(false);
@@ -119,7 +122,7 @@ export default function SearchOverlay({ open, onClose }: { open: boolean; onClos
           {searching && (
             <div className="p-5 text-center text-sm text-white/50 flex items-center justify-center gap-2">
               <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-orange-400 animate-spin" />
-              جاري البحث...
+              جارٍ البحث...
             </div>
           )}
 
@@ -131,9 +134,9 @@ export default function SearchOverlay({ open, onClose }: { open: boolean; onClos
 
           {!searching && query.trim().length >= 2 && results.length === 0 && (
             <div className="p-6 text-center">
-              <p className="text-sm text-white/50">مفيش نتايج لـ "{query}"</p>
+              <p className="text-sm text-white/50">لا توجد نتائج لـ "{query}"</p>
               <Link href="/contact" onClick={onClose} className="inline-block mt-2 text-xs font-bold text-orange-400 hover:underline">
-                مش لاقي اللي بتدور عليه؟ كلمنا ونوفره لك ←
+                لم تجد ما تبحث عنه؟ راسلنا ونوفره لك ←
               </Link>
             </div>
           )}
@@ -141,13 +144,14 @@ export default function SearchOverlay({ open, onClose }: { open: boolean; onClos
           {!searching && results.map((r, i) => {
             const { final, hasDiscount } = priceInfo(r as any);
             const img = r.images?.[0];
+            const unavailable = r.stock_status === "unavailable";
             return (
               <Link
                 key={r.id}
                 href={`/product/${r.id}`}
                 onClick={onClose}
                 onMouseEnter={() => setActive(i)}
-                className={`flex items-center gap-4 px-4 py-3 transition border-b border-white/5 last:border-0 ${active === i ? "bg-orange-500/10" : "hover:bg-white/5"}`}
+                className={`flex items-center gap-4 px-4 py-3 transition border-b border-white/5 last:border-0 ${active === i ? "bg-orange-500/10" : "hover:bg-white/5"} ${unavailable ? "opacity-60" : ""}`}
               >
                 {/* الصورة أو الإيموجي */}
                 <span className="w-12 h-12 shrink-0 rounded-xl overflow-hidden bg-white/5 grid place-items-center">
@@ -162,6 +166,7 @@ export default function SearchOverlay({ open, onClose }: { open: boolean; onClos
                 <span className="flex-1 min-w-0">
                   <span className="block font-bold text-sm truncate text-white">{r.name}</span>
                   {r.brand_name && <span className="block text-[11px] text-white/40">🏷️ {r.brand_name}</span>}
+                  {unavailable && <span className="block text-[10px] text-red-400 font-bold">🚫 غير متاح حاليًا</span>}
                 </span>
                 {/* السعر */}
                 <span className="shrink-0 text-left">

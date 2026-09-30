@@ -22,6 +22,11 @@ export interface DbProduct {
   images: string[];
   sizes: string[] | null;
   colors: string[] | null;
+  sku: string | null;
+  stock_status: string | null;
+  stock_qty: number | null;
+  specs: { k: string; v: string }[] | null;
+  is_draft: boolean | null;
   created_at?: string;
 }
 
@@ -36,7 +41,7 @@ export interface DbCategory {
   is_active: boolean;
 }
 
-const SELECT = "*, brand:brands(id, name), sizes, colors";
+const SELECT = "*, brand:brands(id, name), sizes, colors, sku, stock_status, stock_qty, specs, is_draft";
 
 // 💰 حساب السعر النهائي — الخصم يُحسب فقط إذا كان التاريخ ضمن فترته
 export function priceInfo(p: DbProduct) {
@@ -56,7 +61,7 @@ export function priceInfo(p: DbProduct) {
   return { base, final, hasDiscount: true, percentOff };
 }
 
-// 🗂️ الأقسام — من قاعدة البيانات
+// 🗂️ الأقسام
 export async function getCategories(onlyActive = true): Promise<DbCategory[]> {
   let q = supabase.from("categories").select("*").order("sort_order");
   if (onlyActive) q = q.eq("is_active", true);
@@ -70,7 +75,7 @@ export async function getCategoryBySlug(slug: string): Promise<DbCategory | null
 }
 
 export async function getCategoryCounts(): Promise<Record<string, number>> {
-  const { data } = await supabase.from("products").select("category_slug");
+  const { data } = await supabase.from("products").select("category_slug").eq("is_draft", false);
   const counts: Record<string, number> = {};
   for (const r of (data as { category_slug: string }[]) ?? []) {
     counts[r.category_slug] = (counts[r.category_slug] ?? 0) + 1;
@@ -84,15 +89,17 @@ export async function getBrands(): Promise<DbBrand[]> {
 }
 
 export async function countProducts(): Promise<number> {
-  const { count } = await supabase.from("products").select("id", { count: "exact", head: true });
+  const { count } = await supabase.from("products").select("id", { count: "exact", head: true }).eq("is_draft", false);
   return count ?? 0;
 }
 
+// 🌐 للزوار: المنتجات المنشورة فقط (المسودات مش هتظهر)
 export async function getProductsByCategory(slug: string): Promise<DbProduct[]> {
   const { data } = await supabase
     .from("products")
     .select(SELECT)
     .eq("category_slug", slug)
+    .eq("is_draft", false)
     .order("created_at", { ascending: false });
   return (data as DbProduct[]) ?? [];
 }
@@ -101,21 +108,24 @@ export async function getAllDbProducts(): Promise<DbProduct[]> {
   const { data } = await supabase
     .from("products")
     .select(SELECT)
+    .eq("is_draft", false)
     .order("created_at", { ascending: false });
   return (data as DbProduct[]) ?? [];
 }
 
+// 👁️ بدون فلتر مسودات — عشان المعاينة تشتغل حتى للمسودات
 export async function getDbProduct(id: string): Promise<DbProduct | null> {
   const { data } = await supabase.from("products").select(SELECT).eq("id", id).maybeSingle();
   return (data as DbProduct) ?? null;
 }
 
-// 🤝 منتجات مشابهة: نفس الماركة أولًا — ثم نفس القسم
+// 🤝 منتجات مشابهة: نفس الماركة أولًا — ثم نفس القسم (منشورة فقط)
 export async function getSimilar(p: DbProduct, limit = 4): Promise<DbProduct[]> {
   const { data } = await supabase
     .from("products")
     .select(SELECT)
     .eq("category_slug", p.category_slug)
+    .eq("is_draft", false)
     .neq("id", p.id)
     .limit(limit + 6);
   const list = (data as DbProduct[]) ?? [];
