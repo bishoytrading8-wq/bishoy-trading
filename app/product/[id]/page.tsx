@@ -6,7 +6,7 @@ import { getSettings, waLink } from "../../lib/settings";
 import ProductGallery from "../../components/ProductGallery";
 import DbProductCard from "../../components/DbProductCard";
 import PriceGate from "../../components/PriceGate";
-import AddToCartButton from "../../components/AddToCartButton";
+import ProductOptionsAdd from "../../components/ProductOptionsAdd";
 
 export const revalidate = 0;
 
@@ -70,9 +70,9 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
 
           <div className="mt-6"><PriceGate price={final} /></div>
 
-          {/* 🛒 إضافة للطلب */}
+          {/* 📏🎨 اختيار المقاس واللون + الإضافة للسلة */}
           <div className="mt-4">
-            <AddToCartButton item={{ id: product.id, name: product.name, price: final, emoji: product.emoji ?? "📦", image: product.images?.[0] }} className="py-3.5 text-base" />
+            <ProductOptionsAdd product={product} />
           </div>
 
           <div className="flex gap-3 mt-4 flex-wrap">

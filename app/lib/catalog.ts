@@ -20,6 +20,8 @@ export interface DbProduct {
   brand: DbBrand | null;
   category_slug: string;
   images: string[];
+  sizes: string[] | null;
+  colors: string[] | null;
   created_at?: string;
 }
 
@@ -34,9 +36,9 @@ export interface DbCategory {
   is_active: boolean;
 }
 
-const SELECT = "*, brand:brands(id, name)";
+const SELECT = "*, brand:brands(id, name), sizes, colors";
 
-// 💰 حساب السعر النهائي — الخصم بيحسب بس لو التاريخ جواه فترته
+// 💰 حساب السعر النهائي — الخصم يُحسب فقط إذا كان التاريخ ضمن فترته
 export function priceInfo(p: DbProduct) {
   const today = new Date().toISOString().slice(0, 10);
   const active =
@@ -67,7 +69,6 @@ export async function getCategoryBySlug(slug: string): Promise<DbCategory | null
   return (data as DbCategory) ?? null;
 }
 
-// عدد المنتجات في كل قسم (للرئيسية)
 export async function getCategoryCounts(): Promise<Record<string, number>> {
   const { data } = await supabase.from("products").select("category_slug");
   const counts: Record<string, number> = {};
@@ -109,7 +110,7 @@ export async function getDbProduct(id: string): Promise<DbProduct | null> {
   return (data as DbProduct) ?? null;
 }
 
-// 🤝 منتجات مشابهة: نفس الماركة الأول — وبعدها نفس القسم
+// 🤝 منتجات مشابهة: نفس الماركة أولًا — ثم نفس القسم
 export async function getSimilar(p: DbProduct, limit = 4): Promise<DbProduct[]> {
   const { data } = await supabase
     .from("products")

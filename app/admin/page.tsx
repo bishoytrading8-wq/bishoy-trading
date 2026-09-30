@@ -18,7 +18,6 @@ export default function AdminPage() {
   const [cats, setCats] = useState<DbCategory[]>([]);
   const [items, setItems] = useState<DbProduct[]>([]);
 
-  // الفورم — الـ 10 حقول
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [discountPercent, setDiscountPercent] = useState("");
@@ -31,15 +30,31 @@ export default function AdminPage() {
   const [brandId, setBrandId] = useState("");
   const [categorySlug, setCategorySlug] = useState("");
   const [images, setImages] = useState<string[]>([]);
+  const [sizes, setSizes] = useState<string[]>([]);
+  const [sizeInput, setSizeInput] = useState("");
+  const [colors, setColors] = useState<string[]>([]);
+  const [colorInput, setColorInput] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  // إضافة ماركة جديدة
   const [showNewBrand, setShowNewBrand] = useState(false);
   const [newBrand, setNewBrand] = useState("");
 
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [msg, setMsg] = useState("");
+
+  // 📊 مؤشر إكمال بيانات المنتج
+  const hasAnyDiscount = discountPercent.trim() !== "" || discountAmount.trim() !== "";
+  const completionPct = Math.round(
+    ((name.trim() ? 1 : 0) +
+      (price.trim() ? 1 : 0) +
+      (categorySlug ? 1 : 0) +
+      (description.trim() ? 1 : 0) +
+      (features.length ? 1 : 0) +
+      (images.length ? 1 : 0) +
+      (sizes.length || colors.length ? 1 : 0) +
+      (brandId ? 1 : 0)) / 8 * 100
+  );
 
   const loadBrands = useCallback(async () => {
     setBrands(await getBrands());
@@ -64,7 +79,6 @@ export default function AdminPage() {
     }
   }, [can, loadBrands, loadItems]);
 
-  // 🖼️ رفع الصور (عدد لا نهائي)
   const uploadImages = async (files: FileList | null) => {
     if (!files?.length) return;
     setUploading(true);
@@ -83,7 +97,6 @@ export default function AdminPage() {
     setUploading(false);
   };
 
-  // ✨ إضافة ماركة جديدة
   const addBrand = async () => {
     const n = newBrand.trim();
     if (!n) return;
@@ -106,20 +119,19 @@ export default function AdminPage() {
     loadBrands();
   };
 
-  // 💾 حفظ المنتج
   const save = async () => {
     setMsg("");
-    if (!name.trim()) return setMsg("✍️ اكتب اسم المنتج (نقطة 1)");
+    if (!name.trim()) return setMsg("✍️ اكتب اسم المنتج");
     const priceN = Number(price);
-    if (!priceN || priceN <= 0) return setMsg("💰 اكتب سعر صحيح أكبر من صفر (نقطة 2)");
-    if (!categorySlug) return setMsg("🗂️ اختار قسم المنتج (نقطة 8)");
+    if (!priceN || priceN <= 0) return setMsg("💰 اكتب سعر صحيح أكبر من صفر");
+    if (!categorySlug) return setMsg("🗂️ اختر قسم المنتج");
 
     const pct = discountPercent.trim() ? Number(discountPercent) : null;
     const amt = discountAmount.trim() ? Number(discountAmount) : null;
-    if (pct != null && amt != null) return setMsg("خصم: املأ خانة واحدة بس — نسبة مئوية أو مبلغ ج.م (نقطة 3)");
-    if (pct != null && (pct <= 0 || pct > 100)) return setMsg("نسبة الخصم لازم بين 1 و 100");
-    if (amt != null && amt <= 0) return setMsg("مبلغ الخصم لازم أكبر من صفر");
-    if (discountFrom && discountTo && discountFrom > discountTo) return setMsg("تاريخ بداية الخصم لازم يكون قبل نهايته (نقطة 4)");
+    if (pct != null && amt != null) return setMsg("الخصم: املأ خانة واحدة فقط — نسبة أو مبلغ");
+    if (pct != null && (pct <= 0 || pct > 100)) return setMsg("نسبة الخصم يجب أن تكون بين 1 و 100");
+    if (amt != null && amt <= 0) return setMsg("مبلغ الخصم يجب أن يكون أكبر من صفر");
+    if (discountFrom && discountTo && discountFrom > discountTo) return setMsg("تاريخ بداية الخصم يجب أن يسبق نهايته");
 
     setBusy(true);
     const payload = {
@@ -135,6 +147,8 @@ export default function AdminPage() {
       brand_id: brandId || null,
       category_slug: categorySlug,
       images,
+      sizes: sizes.length ? sizes : null,
+      colors: colors.length ? colors : null,
     };
 
     const { error } = editingId
@@ -143,10 +157,10 @@ export default function AdminPage() {
     setBusy(false);
 
     if (error) {
-      setMsg("فشل الحفظ — اتأكد إن صلاحية إدارة المنتجات مفعّلة لحسابك ✅");
+      setMsg("فشل الحفظ — تأكد من تفعيل صلاحية إدارة المنتجات لحسابك");
       return;
     }
-    setMsg(editingId ? "✓ تم تعديل المنتج" : "✓ تم إضافة المنتج — ظهر في الموقع فورًا 🎉");
+    setMsg(editingId ? "✓ تم تعديل المنتج بنجاح" : "✓ تم إضافة المنتج — ظهر في الموقع فورًا 🎉");
     resetForm();
     loadItems();
   };
@@ -155,7 +169,8 @@ export default function AdminPage() {
     setName(""); setPrice(""); setDiscountPercent(""); setDiscountAmount("");
     setDiscountFrom(""); setDiscountTo(""); setDescription("");
     setFeatures([]); setFeatureInput(""); setBrandId("");
-    setCategorySlug(""); setImages([]);
+    setCategorySlug(cats[0]?.slug ?? ""); setImages([]);
+    setSizes([]); setSizeInput(""); setColors([]); setColorInput("");
     setEditingId(null);
   };
 
@@ -172,19 +187,22 @@ export default function AdminPage() {
     setBrandId(p.brand_id ?? "");
     setCategorySlug(p.category_slug);
     setImages(p.images ?? []);
+    setSizes(p.sizes ?? []);
+    setSizeInput("");
+    setColors(p.colors ?? []);
+    setColorInput("");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const deleteItem = async (p: DbProduct) => {
-    if (!confirm(`امسح "${p.name}" نهائيًا؟`)) return;
+    if (!confirm(`هل تريد حذف "${p.name}" نهائيًا؟`)) return;
     await supabase.from("products").delete().eq("id", p.id);
     loadItems();
   };
 
-  // 📥 تصدير المنتجات Excel
   const exportProducts = () => {
     exportCSV("products.csv",
-      ["الاسم","القسم","الماركة","السعر","نسبة الخصم %","مبلغ الخصم","من تاريخ","إلى تاريخ","السعر النهائي","الوصف","المميزات"],
+      ["الاسم","القسم","الماركة","السعر","نسبة الخصم %","مبلغ الخصم","من تاريخ","إلى تاريخ","السعر النهائي","المقاسات","الألوان","الوصف","المميزات"],
       items.map((p) => {
         const { final, hasDiscount } = priceInfo(p);
         const cat = cats.find((c) => c.slug === p.category_slug);
@@ -193,21 +211,21 @@ export default function AdminPage() {
           p.discount_percent ?? "", p.discount_amount ?? "",
           p.discount_from ?? "", p.discount_to ?? "",
           hasDiscount ? `${final} (بعد الخصم)` : String(final),
+          (p.sizes ?? []).join(" | "), (p.colors ?? []).join(" | "),
           p.description ?? "", (p.features ?? []).join(" | "),
         ];
       })
     );
   };
 
-  // 🔒 الحماية
   if (loading) return <div className="max-w-5xl mx-auto px-4 py-20"><div className="h-40 rounded-3xl bg-white/5 animate-pulse" /></div>;
 
   if (!user || !can("manageProducts")) {
     return (
       <div className="max-w-md mx-auto px-4 py-24 text-center">
         <span className="text-6xl">🔒</span>
-        <h1 className="text-2xl font-black mt-4">الصفحة دي لفريق الإدارة بس</h1>
-        <p className="text-white/50 text-sm mt-2">لو إنت من فريق العمل — سجّل دخول بحسابك الإداري</p>
+        <h1 className="text-2xl font-black mt-4">هذه الصفحة لفريق الإدارة فقط</h1>
+        <p className="text-white/50 text-sm mt-2">إن كنت من فريق العمل — سجّل دخولك بحسابك الإداري</p>
       </div>
     );
   }
@@ -218,8 +236,8 @@ export default function AdminPage() {
 
       <div className="flex items-center justify-between flex-wrap gap-3 mb-8">
         <div>
-          <h1 className="text-3xl font-black">لوحة المنتجات ⚙️</h1>
-          <p className="text-white/50 text-sm mt-1">أضف منتجاتك — وكل حاجة بتظهر في الموقع فورًا</p>
+          <h1 className="text-2xl font-black">لوحة المنتجات ⚙️</h1>
+          <p className="text-white/50 text-sm mt-1">أضف منتجاتك — وكل شيء يظهر في الموقع فورًا</p>
         </div>
         <div className="flex items-center gap-2">
           {user.email?.toLowerCase() === (process.env.NEXT_PUBLIC_ADMIN_EMAIL ?? "").toLowerCase() && (
@@ -230,92 +248,223 @@ export default function AdminPage() {
       </div>
 
       {msg && (
-        <div className={`rounded-xl border px-4 py-3 text-sm font-bold mb-6 ${msg.startsWith("✓") ? "bg-green-500/10 border-green-500/30 text-green-300" : "bg-red-500/10 border-red-500/30 text-red-300"}`}>
+        <div className={`rounded-xl border px-4 py-3 text-sm font-bold mb-6 animate-rise-in ${msg.startsWith("✓") ? "bg-green-500/10 border-green-500/30 text-green-300" : "bg-red-500/10 border-red-500/30 text-red-300"}`}>
           {msg}
         </div>
       )}
 
+      {/* ═══════════ نموذج الإضافة الفاخر ═══════════ */}
       <div className="grid lg:grid-cols-3 gap-6 items-start">
-        {/* ═══════════ الفورم ═══════════ */}
-        <div className="lg:col-span-2 rounded-3xl bg-[#101a30] border border-white/10 p-6 space-y-4">
-          {editingId && (
-            <p className="text-xs font-bold text-orange-400 bg-orange-500/10 border border-orange-500/30 rounded-xl px-4 py-2.5">
-              ✏️ بتحرّر منتج موجود — بعد الحفظ الفورم هينضف
-            </p>
-          )}
 
-          {/* 1️⃣ 2️⃣ الاسم + السعر */}
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div className={stepCls}>
-              <span className="w-6 h-6 shrink-0 grid place-items-center rounded-full bg-orange-500/20 text-orange-400 text-xs font-black">1</span>
+        {/* العمود الرئيسي */}
+        <div className="lg:col-span-2 space-y-4">
+
+          {/* 🎛️ هيدر النموذج: دائرة الإكمال */}
+          <div className="rounded-3xl bg-[#101a30] border border-white/10 p-5">
+            <div className="flex items-center gap-4">
+              <svg viewBox="0 0 44 44" className="w-14 h-14 shrink-0 -rotate-90">
+                <circle cx="22" cy="22" r="19" fill="none" stroke="rgba(255,255,255,.08)" strokeWidth="4" />
+                <circle
+                  cx="22" cy="22" r="19" fill="none" stroke="#f97316" strokeWidth="4"
+                  strokeLinecap="round" strokeDasharray="119.4"
+                  className="completion-ring"
+                  strokeDashoffset={119.4 - (119.4 * completionPct) / 100}
+                />
+                <text x="22" y="27" textAnchor="middle" fill="#fff" fontSize="12" fontWeight="900" transform="rotate(90 22 22)">{completionPct}%</text>
+              </svg>
               <div className="flex-1">
-                <label className={labelCls}>اسم المنتج</label>
-                <input className={inputCls} placeholder="مثال: شفاط مطبخ 8 بوصة" value={name} onChange={(e) => setName(e.target.value)} />
+                <h2 className="font-black text-lg">
+                  {editingId ? "✏️ تعديل منتج موجود" : "✨ منتج جديد"}
+                </h2>
+                <p className="text-xs text-white/40 mt-0.5">
+                  {completionPct === 100
+                    ? "🎉 البيانات مكتملة — جاهز للنشر!"
+                    : "أكمل البيانات — كلما زادت، ظهر منتجك باحترافية أكبر"}
+                </p>
               </div>
-            </div>
-            <div className={stepCls}>
-              <span className="w-6 h-6 shrink-0 grid place-items-center rounded-full bg-orange-500/20 text-orange-400 text-xs font-black">2</span>
-              <div className="flex-1">
-                <label className={labelCls}>السعر (ج.م)</label>
-                <input className={inputCls} inputMode="numeric" placeholder="1650" value={price} onChange={(e) => setPrice(e.target.value.replace(/[^\d.]/g, ""))} />
-              </div>
-            </div>
-          </div>
-
-          {/* 3️⃣ 4️⃣ الخصم + التواريخ */}
-          <div className={stepCls}>
-            <span className="w-6 h-6 shrink-0 grid place-items-center rounded-full bg-orange-500/20 text-orange-400 text-xs font-black">3</span>
-            <div className="flex-1 space-y-3">
-              <label className={labelCls}>الخصم (اختياري — املأ خانة واحدة بس)</label>
-              <div className="grid grid-cols-2 gap-3">
-                <input className={inputCls} inputMode="numeric" placeholder="نسبة % — مثال: 15" value={discountPercent} onChange={(e) => { setDiscountPercent(e.target.value.replace(/[^\d.]/g, "")); setDiscountAmount(""); }} />
-                <input className={inputCls} inputMode="numeric" placeholder="مبلغ ج.م — مثال: 200" value={discountAmount} onChange={(e) => { setDiscountAmount(e.target.value.replace(/[^\d.]/g, "")); setDiscountPercent(""); }} />
-              </div>
-              <label className={labelCls + " pt-1"}>تاريخ الخصم من — إلى (اختياري — فاضي = دائم)</label>
-              <div className="grid grid-cols-2 gap-3">
-                <input type="date" dir="ltr" className={inputCls} value={discountFrom} onChange={(e) => setDiscountFrom(e.target.value)} />
-                <input type="date" dir="ltr" className={inputCls} value={discountTo} onChange={(e) => setDiscountTo(e.target.value)} />
-              </div>
-            </div>
-          </div>
-
-          {/* 5️⃣ الوصف */}
-          <div className={stepCls}>
-            <span className="w-6 h-6 shrink-0 grid place-items-center rounded-full bg-orange-500/20 text-orange-400 text-xs font-black">5</span>
-            <div className="flex-1">
-              <label className={labelCls}>وصف المنتج</label>
-              <textarea className={inputCls + " min-h-24 resize-none"} placeholder="اكتب وصف مختصر وجاذب للمنتج..." value={description} onChange={(e) => setDescription(e.target.value)} />
-            </div>
-          </div>
-
-          {/* 6️⃣ المميزات */}
-          <div className={stepCls}>
-            <span className="w-6 h-6 shrink-0 grid place-items-center rounded-full bg-orange-500/20 text-orange-400 text-xs font-black">6</span>
-            <div className="flex-1">
-              <label className={labelCls}>مميزات المنتج</label>
-              <div className="flex gap-2">
-                <input className={inputCls} placeholder="ميزة واحدة كل مرة — مثال: موتور نحاس" value={featureInput} onChange={(e) => setFeatureInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && featureInput.trim()) { e.preventDefault(); setFeatures([...features, featureInput.trim()]); setFeatureInput(""); } }} />
-                <button onClick={() => { if (featureInput.trim()) { setFeatures([...features, featureInput.trim()]); setFeatureInput(""); } }} className="shrink-0 w-11 rounded-xl bg-orange-500 hover:bg-orange-400 font-black text-lg transition">＋</button>
-              </div>
-              {features.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-3">
-                  {features.map((f, i) => (
-                    <span key={f + i} className="inline-flex items-center gap-1.5 text-xs font-bold bg-white/5 border border-white/10 rounded-full px-3 py-1.5">
-                      ✓ {f}
-                      <button onClick={() => setFeatures(features.filter((_, j) => j !== i))} className="text-red-400 hover:text-red-300 font-black" aria-label={`حذف ${f}`}>✕</button>
-                    </span>
-                  ))}
-                </div>
+              {editingId && (
+                <button onClick={resetForm} className="shrink-0 text-xs font-bold border border-white/15 hover:bg-white/5 rounded-lg px-4 py-2 transition">إلغاء التعديل</button>
               )}
             </div>
           </div>
 
-          {/* 7️⃣ 8️⃣ الماركة + القسم */}
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div className={stepCls}>
-              <span className="w-6 h-6 shrink-0 grid place-items-center rounded-full bg-orange-500/20 text-orange-400 text-xs font-black">7</span>
+          {/* ─── القسم 1: الأساسيات ─── */}
+          <details open className="form-section rounded-3xl bg-[#101a30] border border-white/10 overflow-hidden">
+            <summary className="flex items-center gap-3 p-5 cursor-pointer list-none select-none">
+              <span className="inline-grid place-items-center w-10 h-10 rounded-xl bg-orange-500/15 text-orange-400 text-lg">📦</span>
               <div className="flex-1">
-                <label className={labelCls}>ماركة المنتج</label>
+                <h3 className="font-extrabold">الأساسيات</h3>
+                <p className="text-[11px] text-white/40">الاسم والسعر والقسم — الحد الأدنى للنشر</p>
+              </div>
+              <span className="text-white/30 group-open:rotate-180 transition-transform">▼</span>
+            </summary>
+            <div className="px-5 pb-5 space-y-4">
+              <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <label className={labelCls}>📦 اسم المنتج</label>
+                <input className={inputCls} placeholder="مثال: بلاور هواء LUFTBERG" value={name} onChange={(e) => setName(e.target.value)} />
+              </div>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                  <label className={labelCls}>💰 السعر (ج.م)</label>
+                  <input className={inputCls} inputMode="numeric" placeholder="1650" value={price} onChange={(e) => setPrice(e.target.value.replace(/[^\d.]/g, ""))} />
+                </div>
+                <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                  <label className={labelCls}>🗂️ القسم</label>
+                  <select className={inputCls} value={categorySlug} onChange={(e) => setCategorySlug(e.target.value)}>
+                    {cats.map((c) => <option key={c.slug} value={c.slug} className="bg-[#101a30]">{c.emoji} {c.name}</option>)}
+                  </select>
+                </div>
+              </div>
+            </div>
+          </details>
+
+          {/* ─── القسم 2: الوصف والمميزات ─── */}
+          <details className="form-section rounded-3xl bg-[#101a30] border border-white/10 overflow-hidden">
+            <summary className="flex items-center gap-3 p-5 cursor-pointer list-none select-none">
+              <span className="inline-grid place-items-center w-10 h-10 rounded-xl bg-blue-500/15 text-blue-400 text-lg">📝</span>
+              <div className="flex-1">
+                <h3 className="font-extrabold">الوصف والمميزات</h3>
+                <p className="text-[11px] text-white/40">لماذا يشتري العميل منك تحديدًا؟</p>
+              </div>
+              <span className="text-white/30 group-open:rotate-180 transition-transform">▼</span>
+            </summary>
+            <div className="px-5 pb-5 space-y-4">
+              <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <label className={labelCls}>📄 وصف المنتج</label>
+                <textarea className={inputCls + " min-h-24 resize-none"} placeholder="وصف مختصر وجاذب — ما هو، لمن يصلح، وما يميزه..." value={description} onChange={(e) => setDescription(e.target.value)} />
+              </div>
+              <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <label className={labelCls}>✅ المميزات</label>
+                <div className="flex gap-2">
+                  <input className={inputCls} placeholder="ميزة واحدة كل مرة — ثم اضغط Enter" value={featureInput} onChange={(e) => setFeatureInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && featureInput.trim()) { e.preventDefault(); setFeatures([...features, featureInput.trim()]); setFeatureInput(""); } }} />
+                  <button onClick={() => { if (featureInput.trim()) { setFeatures([...features, featureInput.trim()]); setFeatureInput(""); } }} className="shrink-0 w-11 rounded-xl bg-orange-500 hover:bg-orange-400 font-black text-lg transition">＋</button>
+                </div>
+                {features.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {features.map((f, i) => (
+                      <span key={f + i} className="inline-flex items-center gap-1.5 text-xs font-bold bg-orange-500/10 border border-orange-500/30 text-orange-300 rounded-full px-3 py-1.5">
+                        ✓ {f}
+                        <button onClick={() => setFeatures(features.filter((_, j) => j !== i))} className="text-red-400 hover:text-red-300 font-black">✕</button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </details>
+
+          {/* ─── القسم 3: الخصم ─── */}
+          <details className="form-section rounded-3xl bg-[#101a30] border border-white/10 overflow-hidden">
+            <summary className="flex items-center gap-3 p-5 cursor-pointer list-none select-none">
+              <span className="inline-grid place-items-center w-10 h-10 rounded-xl bg-red-500/15 text-red-400 text-lg">🔥</span>
+              <div className="flex-1">
+                <h3 className="font-extrabold">عرض وخصم</h3>
+                <p className="text-[11px] text-white/40">{hasAnyDiscount ? "🔥 خصم نشط على هذا المنتج" : "اختياري — املأ خانة واحدة فقط"}</p>
+              </div>
+              <span className="text-white/30 group-open:rotate-180 transition-transform">▼</span>
+            </summary>
+            <div className="px-5 pb-5 space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                  <label className={labelCls}>نسبة مئوية %</label>
+                  <input className={inputCls} inputMode="numeric" placeholder="15" value={discountPercent} onChange={(e) => { setDiscountPercent(e.target.value.replace(/[^\d.]/g, "")); setDiscountAmount(""); }} />
+                </div>
+                <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                  <label className={labelCls}>مبلغ ج.م</label>
+                  <input className={inputCls} inputMode="numeric" placeholder="200" value={discountAmount} onChange={(e) => { setDiscountAmount(e.target.value.replace(/[^\d.]/g, "")); setDiscountPercent(""); }} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                  <label className={labelCls}>📅 يبدأ من (اختياري)</label>
+                  <input type="date" dir="ltr" className={inputCls} value={discountFrom} onChange={(e) => setDiscountFrom(e.target.value)} />
+                </div>
+                <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                  <label className={labelCls}>📅 ينتهي في</label>
+                  <input type="date" dir="ltr" className={inputCls} value={discountTo} onChange={(e) => setDiscountTo(e.target.value)} />
+                </div>
+              </div>
+            </div>
+          </details>
+
+          {/* ─── القسم 4: الخيارات ─── */}
+          <details className="form-section rounded-3xl bg-[#101a30] border border-white/10 overflow-hidden">
+            <summary className="flex items-center gap-3 p-5 cursor-pointer list-none select-none">
+              <span className="inline-grid place-items-center w-10 h-10 rounded-xl bg-violet-500/15 text-violet-400 text-lg">🎨</span>
+              <div className="flex-1">
+                <h3 className="font-extrabold">الخيارات المتاحة</h3>
+                <p className="text-[11px] text-white/40">{sizes.length + colors.length > 0 ? `${sizes.length} مقاسات • ${colors.length} ألوان` : "مقاسات وألوان — العميل يختار قبل الشراء"}</p>
+              </div>
+              <span className="text-white/30 group-open:rotate-180 transition-transform">▼</span>
+            </summary>
+            <div className="px-5 pb-5 space-y-4">
+              <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <label className={labelCls}>📏 المقاسات</label>
+                <div className="flex gap-2">
+                  <input className={inputCls} placeholder="مثال: 6 بوصة — ثم Enter" value={sizeInput} onChange={(e) => setSizeInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && sizeInput.trim()) { e.preventDefault(); if (!sizes.includes(sizeInput.trim())) setSizes([...sizes, sizeInput.trim()]); setSizeInput(""); } }} />
+                  <button onClick={() => { if (sizeInput.trim() && !sizes.includes(sizeInput.trim())) { setSizes([...sizes, sizeInput.trim()]); setSizeInput(""); } }} className="shrink-0 w-11 rounded-xl bg-orange-500 hover:bg-orange-400 font-black text-lg transition">＋</button>
+                </div>
+                {sizes.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {sizes.map((s, i) => (
+                      <span key={s + i} className="inline-flex items-center gap-1.5 text-xs font-bold bg-violet-500/10 border border-violet-500/30 text-violet-300 rounded-full px-3 py-1.5">
+                        📏 {s}
+                        <button onClick={() => setSizes(sizes.filter((_, j) => j !== i))} className="text-red-400 hover:text-red-300 font-black">✕</button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <label className={labelCls}>🎨 الألوان</label>
+                <div className="flex gap-2">
+                  <input className={inputCls} placeholder="مثال: فضي — ثم Enter" value={colorInput} onChange={(e) => setColorInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && colorInput.trim()) { e.preventDefault(); if (!colors.includes(colorInput.trim())) setColors([...colors, colorInput.trim()]); setColorInput(""); } }} />
+                  <button onClick={() => { if (colorInput.trim() && !colors.includes(colorInput.trim())) { setColors([...colors, colorInput.trim()]); setColorInput(""); } }} className="shrink-0 w-11 rounded-xl bg-orange-500 hover:bg-orange-400 font-black text-lg transition">＋</button>
+                </div>
+                {colors.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {colors.map((c, i) => (
+                      <span key={c + i} className="inline-flex items-center gap-1.5 text-xs font-bold bg-pink-500/10 border border-pink-500/30 text-pink-300 rounded-full px-3 py-1.5">
+                        🎨 {c}
+                        <button onClick={() => setColors(colors.filter((_, j) => j !== i))} className="text-red-400 hover:text-red-300 font-black">✕</button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </details>
+
+          {/* ─── القسم 5: الصور والماركة ─── */}
+          <details className="form-section rounded-3xl bg-[#101a30] border border-white/10 overflow-hidden">
+            <summary className="flex items-center gap-3 p-5 cursor-pointer list-none select-none">
+              <span className="inline-grid place-items-center w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-400 text-lg">🖼️</span>
+              <div className="flex-1">
+                <h3 className="font-extrabold">الصور والماركة</h3>
+                <p className="text-[11px] text-white/40">{images.length > 0 ? `📷 ${images.length} صورة مرفوعة` : "الصورة الأولى هي صورة الغلاف الأساسية"}</p>
+              </div>
+              <span className="text-white/30 group-open:rotate-180 transition-transform">▼</span>
+            </summary>
+            <div className="px-5 pb-5 space-y-4">
+              <label className="block rounded-2xl border-2 border-dashed border-white/15 hover:border-orange-500/50 hover:bg-orange-500/5 transition p-6 text-center cursor-pointer">
+                <span className="text-3xl">🖼️</span>
+                <p className="text-sm font-bold mt-1">{uploading ? "جارٍ الرفع..." : "اضغط لاختيار صور المنتج — عدد غير محدود"}</p>
+                <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => { uploadImages(e.target.files); e.currentTarget.value = ""; }} />
+              </label>
+              {images.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {images.map((src, i) => (
+                    <div key={src + i} className="relative w-20 h-20 rounded-xl overflow-hidden border border-white/10 group">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={src} alt={`صورة ${i + 1}`} className="w-full h-full object-cover" />
+                      {i === 0 && <span className="absolute bottom-0 inset-x-0 bg-orange-500/90 text-white text-[9px] font-black text-center py-0.5">الغلاف</span>}
+                      <button onClick={() => setImages(images.filter((_, j) => j !== i))} className="absolute top-1 left-1 w-5 h-5 grid place-items-center rounded-full bg-red-500 text-white text-[10px] font-black opacity-0 group-hover:opacity-100 transition" aria-label="حذف الصورة">✕</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <label className={labelCls}>🏷️ الماركة</label>
                 <select className={inputCls} value={brandId} onChange={(e) => setBrandId(e.target.value)}>
                   <option value="" className="bg-[#101a30]">بدون ماركة</option>
                   {brands.map((b) => <option key={b.id} value={b.id} className="bg-[#101a30]">{b.name}</option>)}
@@ -327,80 +476,40 @@ export default function AdminPage() {
                     <button onClick={() => { setShowNewBrand(false); setNewBrand(""); }} className="shrink-0 px-3 rounded-xl bg-white/5 text-white/50 text-sm font-black">✕</button>
                   </div>
                 ) : (
-                  <button onClick={() => setShowNewBrand(true)} className="text-xs font-bold text-orange-400 hover:underline mt-2">＋ إضافة ماركة جديدة</button>
+                  <button onClick={() => setShowNewBrand(true)} className="text-xs font-bold text-orange-400 hover:underline mt-2">＋ ماركة جديدة</button>
                 )}
               </div>
             </div>
-            <div className={stepCls}>
-              <span className="w-6 h-6 shrink-0 grid place-items-center rounded-full bg-orange-500/20 text-orange-400 text-xs font-black">8</span>
-              <div className="flex-1">
-                <label className={labelCls}>قسم المنتج</label>
-                <select className={inputCls} value={categorySlug} onChange={(e) => setCategorySlug(e.target.value)}>
-                  {cats.map((c) => <option key={c.slug} value={c.slug} className="bg-[#101a30]">{c.emoji} {c.name}</option>)}
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {/* 9️⃣ الصور */}
-          <div className={stepCls}>
-            <span className="w-6 h-6 shrink-0 grid place-items-center rounded-full bg-orange-500/20 text-orange-400 text-xs font-black">9</span>
-            <div className="flex-1">
-              <label className={labelCls}>صور المنتج (عدد لا نهائي — تختار كلهم مرة واحدة)</label>
-              <label className="block rounded-2xl border-2 border-dashed border-white/15 hover:border-orange-500/50 hover:bg-orange-500/5 transition p-5 text-center cursor-pointer">
-                <span className="text-3xl">🖼️</span>
-                <p className="text-sm font-bold mt-1">{uploading ? "جاري الرفع..." : "اضغط واختار صور المنتج"}</p>
-                <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => { uploadImages(e.target.files); e.currentTarget.value = ""; }} />
-              </label>
-              {images.length > 0 && (
-                <>
-                  <p className="text-[11px] text-white/40 font-bold mt-3">📷 {images.length} {images.length === 1 ? "صورة" : "صور"} جاهزة</p>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {images.map((src, i) => (
-                      <div key={src + i} className="relative w-20 h-20 rounded-xl overflow-hidden border border-white/10 group">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={src} alt={`صورة ${i + 1}`} className="w-full h-full object-cover" />
-                        <button onClick={() => setImages(images.filter((_, j) => j !== i))} className="absolute top-1 left-1 w-5 h-5 grid place-items-center rounded-full bg-red-500 text-white text-[10px] font-black opacity-0 group-hover:opacity-100 transition" aria-label="حذف الصورة">✕</button>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* 🔟 المشابهة — تلقائي */}
-          <div className={stepCls + " border-green-500/20 bg-green-500/[0.03]"}>
-            <span className="w-6 h-6 shrink-0 grid place-items-center rounded-full bg-green-500/20 text-green-400 text-xs font-black">10</span>
-            <p className="text-xs text-white/60 leading-relaxed flex-1">
-              🤝 <span className="font-bold text-green-300">المنتجات المشابهة بتظهر تلقائيًا</span> في صفحة المنتج — من نفس الماركة الأول، وبعدها نفس القسم. مفيش شغل يدوي هنا ✅
-            </p>
-          </div>
-
-          {/* أزرار الحفظ */}
-          <div className="flex gap-3 pt-2">
-            <button onClick={save} disabled={busy || uploading} className="flex-1 bg-orange-500 hover:bg-orange-400 disabled:opacity-60 rounded-xl py-3.5 font-extrabold transition flex items-center justify-center gap-2">
-              {busy && <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />}
-              {busy ? "جاري الحفظ..." : editingId ? "💾 حفظ التعديل" : "✨ إضافة المنتج للموقع"}
-            </button>
-            {editingId && (
-              <button onClick={resetForm} className="px-6 rounded-xl border border-white/15 hover:bg-white/5 font-bold text-sm transition">إلغاء</button>
-            )}
-          </div>
+          </details>
         </div>
 
-        {/* ═══════════ الماركات ═══════════ */}
-        <div className="rounded-3xl bg-[#101a30] border border-white/10 p-6">
-          <h2 className="font-black text-lg">🏷️ الماركات ({brands.length})</h2>
-          <p className="text-xs text-white/40 mt-1">بتظهر في القايمة المنسدلة بتاعة الفورم</p>
-          <div className="mt-4 space-y-2">
-            {brands.map((b) => (
-              <div key={b.id} className="flex items-center justify-between rounded-xl bg-white/5 border border-white/10 px-4 py-2.5">
-                <span className="text-sm font-bold">{b.name}</span>
-                <button onClick={() => removeBrand(b.id)} className="text-red-400 hover:text-red-300 text-xs font-black" aria-label={`حذف ${b.name}`}>حذف</button>
-              </div>
-            ))}
-            {brands.length === 0 && <p className="text-xs text-white/40 py-4 text-center">مفيش ماركات لسه</p>}
+        {/* ═══════════ العمود الجانبي ═══════════ */}
+        <div className="space-y-4 lg:sticky lg:top-24">
+          {/* 💾 الحفظ */}
+          <button onClick={save} disabled={busy || uploading} className="w-full bg-orange-500 hover:bg-orange-400 active:scale-[0.98] disabled:opacity-60 rounded-2xl py-5 font-black text-lg transition-all duration-300 flex items-center justify-center gap-2 shadow-2xl shadow-orange-500/40">
+            {busy && <span className="w-5 h-5 rounded-full border-2 border-white/30 border-t-white animate-spin" />}
+            {busy ? "جارٍ الحفظ..." : editingId ? "💾 حفظ التعديلات" : "🚀 نشر المنتج على الموقع"}
+          </button>
+
+          {/* 🏷️ الماركات */}
+          <div className="rounded-3xl bg-[#101a30] border border-white/10 p-6">
+            <h2 className="font-black text-lg">🏷️ الماركات ({brands.length})</h2>
+            <div className="mt-4 space-y-2">
+              {brands.map((b) => (
+                <div key={b.id} className="flex items-center justify-between rounded-xl bg-white/5 border border-white/10 px-4 py-2.5">
+                  <span className="text-sm font-bold">{b.name}</span>
+                  <button onClick={() => removeBrand(b.id)} className="text-red-400 hover:text-red-300 text-xs font-black">حذف</button>
+                </div>
+              ))}
+              {brands.length === 0 && <p className="text-xs text-white/40 py-4 text-center">لا توجد ماركات بعد</p>}
+            </div>
+          </div>
+
+          {/* 🤝 المشابهة التلقائية */}
+          <div className="rounded-3xl border border-green-500/20 bg-green-500/[0.03] p-5">
+            <p className="text-xs text-white/60 leading-relaxed">
+              🤝 <span className="font-bold text-green-300">المنتجات المشابهة تلقائية</span> — تظهر من نفس الماركة أولًا ثم نفس القسم، دون أي جهد يدوي.
+            </p>
           </div>
         </div>
       </div>
@@ -431,6 +540,8 @@ export default function AdminPage() {
                   <p className="font-bold truncate">{p.name}</p>
                   <p className="text-[11px] text-white/40 font-bold mt-0.5">
                     {cat?.name ?? p.category_slug} {p.brand?.name && `• 🏷️ ${p.brand.name}`} • <span className="text-orange-400">{final} ج.م</span>{hasDiscount && " 🔥"}
+                    {(p.sizes ?? []).length > 0 && ` • 📏 ${(p.sizes ?? []).length} مقاسات`}
+                    {(p.colors ?? []).length > 0 && ` • 🎨 ${(p.colors ?? []).length} ألوان`}
                   </p>
                 </div>
                 <button onClick={() => editItem(p)} className="shrink-0 text-xs font-bold border border-white/15 hover:bg-white/5 rounded-lg px-4 py-2 transition">✏️ تعديل</button>
@@ -439,7 +550,7 @@ export default function AdminPage() {
             );
           })}
           {items.length === 0 && (
-            <p className="text-center text-sm text-white/40 py-10 rounded-2xl border border-dashed border-white/10">لسه مفيش منتجات — ابدأ بإضافة أول منتج من الفورم فوق 👆</p>
+            <p className="text-center text-sm text-white/40 py-10 rounded-2xl border border-dashed border-white/10">لا توجد منتجات بعد — ابدأ بإضافة أول منتج من النموذج أعلاه 👆</p>
           )}
         </div>
       </section>
