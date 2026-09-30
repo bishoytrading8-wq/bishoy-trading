@@ -1,20 +1,16 @@
 import type { Metadata } from "next";
-import localFont from "next/font/local";
+import { Cairo } from "next/font/google";
 import "./globals.css";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import { AuthProvider } from "./lib/AuthProvider";
 import { CartProvider } from "./components/CartProvider";
+import PreviewExitButton from "./components/PreviewExitButton";
 
-// 📝 خط Cairo محلي — مفيش اعتماد على الإنترنت وقت البناء
-const cairo = localFont({
-  src: [
-    { path: "./fonts/Cairo-Regular.ttf", weight: "400", style: "normal" },
-    { path: "./fonts/Cairo-Bold.ttf", weight: "700", style: "normal" },
-    { path: "./fonts/Cairo-Black.ttf", weight: "900", style: "normal" },
-  ],
+const cairo = Cairo({
+  subsets: ["arabic", "latin"],
   variable: "--font-cairo",
-  display: "swap",
+  weight: ["400", "500", "600", "700", "800", "900"],
 });
 
 export const metadata: Metadata = {
@@ -29,6 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`${cairo.variable} antialiased bg-[#0b1220] text-white`}>
         <AuthProvider>
           <CartProvider>
+            <PreviewExitButton />
             <Header />
             <main className="min-h-[60vh]">{children}</main>
             <Footer />
