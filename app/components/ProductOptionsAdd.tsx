@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useCart } from "./CartProvider";
-import type { DbProduct } from "../lib/catalog";
+import { priceForSize, type DbProduct } from "../lib/catalog";
 
 export default function ProductOptionsAdd({ product }: { product: DbProduct }) {
   const { add } = useCart();
@@ -12,25 +12,23 @@ export default function ProductOptionsAdd({ product }: { product: DbProduct }) {
 
   const sizes = product.sizes ?? [];
   const sizePrices = product.size_prices ?? [];
+  const sizeSpecs = product.size_specs ?? [];
   const colors = product.colors ?? [];
   const unavailable = product.stock_status === "unavailable";
   const needSize = sizes.length > 0 && !size;
   const needColor = colors.length > 0 && !color;
   const blocked = unavailable || needSize || needColor;
 
-  // 💰 السعر النهائي = سعر المقاس المختار، أو السعر الأساسي
-  const sizePrice = sizePrices.find((sp) => sp.size === size)?.price;
-  const final = sizePrice ?? Number(product.price);
-  const basePrice = Number(product.price);
-  const priceChanged = sizePrice != null && sizePrice !== basePrice;
+  // 💰 السعر حسب المقاس المختار — مع القديم المشطوب لو فيه خصم
+  const info = priceForSize(product, size);
+  const final = info.final;
+  const oldPrice = info.hasDiscount ? info.base : null;
 
-  const onAdd = () => {
-    if (blocked) return;
-    const nameWith = [product.name, size && `(${size})`, color && `- ${color}`].filter(Boolean).join(" ");
-    add({ id: `${product.id}|${size}|${color}`, name: nameWith, price: final, emoji: product.emoji ?? "📦", image: product.images?.[0] });
-    setAdded(true);
-    setTimeout(() => setAdded(false), 1500);
-  };
+  // 🔧 المواصفات المعروضة: لو مقاس مختار وعنده مواصفات خاصة → بتاعته، وإلا العامة
+  const selectedSizeSpecs = size ? sizeSpecs.find((x) => x.size === size)?.specs : null;
+  const shownSpecs = selectedSizeSpecs && selectedSizeSpecs.length > 0
+    ? selectedSizeSpecs
+    : product.specs ?? [];
 
   return (
     <div className="space-y-4">
@@ -96,20 +94,29 @@ export default function ProductOptionsAdd({ product }: { product: DbProduct }) {
         </div>
       )}
 
-      {/* 💰 صندوق السعر الديناميكي */}
+      {/* 💰 صندوق السعر: القديم مشطوب + الجديد بعد الخصم */}
       <div className={`rounded-2xl p-5 border transition-all duration-300 ${blocked ? "border-dashed border-orange-500/40 bg-orange-500/5" : "bg-gradient-to-l from-green-500/15 to-transparent border-green-500/30"}`}>
         <p className="text-xs text-white/50 font-bold">
           {blocked
             ? "أكمل اختياراتك لمعرفة السعر النهائي"
+            : oldPrice != null
+            ? "السعر بعد الخصم 🔥"
             : priceChanged
             ? `سعر المقاس المختار (${size})`
             : "السعر"}
         </p>
-        <p className={`text-4xl font-black mt-1 ${blocked ? "text-orange-400" : "text-green-400"}`}>
-          {blocked ? "؟؟؟" : `${final}`} <span className="text-lg">ج.م</span>
-        </p>
-        {priceChanged && !blocked && (
-          <p className="text-xs text-white/40 mt-1">السعر الأساسي: <span className="line-through">{basePrice} ج.م</span> — حسب المقاس المختار</p>
+        <div className="flex items-center gap-3 mt-1 flex-wrap">
+          {/* 💔 القديم — مشطوب أحمر */}
+          {oldPrice != null && (
+            <span className="text-2xl font-bold text-red-400 line-through decoration-2">{oldPrice} ج.م</span>
+          )}
+          {/* ✅ الجديد بعد الخصم */}
+          <span className={`text-4xl font-black ${blocked ? "text-orange-400" : "text-green-400"}`}>
+            {blocked ? "؟؟؟" : `${final}`} <span className="text-lg">ج.م</span>
+          </span>
+        </div>
+        {oldPrice != null && !blocked && (
+          <p className="text-xs text-white/40 mt-1">وفّر {oldPrice - final} ج.م مع العرض الحالي</p>
         )}
       </div>
 
@@ -136,13 +143,15 @@ export default function ProductOptionsAdd({ product }: { product: DbProduct }) {
           : "🛒 أضف للطلب"}
       </button>
 
-      {/* 🔧 المواصفات */}
-      {product.specs && product.specs.length > 0 && (
+      {/* 🔧 المواصفات — خاصة بالمقاس المختار أو العامة */}
+      {shownSpecs.length > 0 && (
         <div className="rounded-2xl border border-white/10 overflow-hidden">
-          <h3 className="bg-white/5 px-5 py-3 font-black text-sm">🔧 المواصفات الفنية</h3>
+          <h3 className="bg-white/5 px-5 py-3 font-black text-sm">
+            🔧 {size && selectedSizeSpecs && selectedSizeSpecs.length > 0 ? `مواصفات المقاس المختار (${size})` : "المواصفات الفنية"}
+          </h3>
           <table className="w-full text-sm">
             <tbody>
-              {product.specs.map((sp, i) => (
+              {shownSpecs.map((sp, i) => (
                 <tr key={i} className={i % 2 === 0 ? "bg-white/[0.02]" : ""}>
                   <td className="px-5 py-2.5 font-bold text-white/70 w-1/3">{sp.k}</td>
                   <td className="px-5 py-2.5 text-white/60">{sp.v}</td>

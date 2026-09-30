@@ -37,6 +37,10 @@ export default function AdminPage() {
   const [sizes, setSizes] = useState<string[]>([]);
   const [sizeInput, setSizeInput] = useState("");
   const [sizePrices, setSizePrices] = useState<{ size: string; price: string }[]>([]);
+  const [sizeSpecs, setSizeSpecs] = useState<{ size: string; specs: Spec[] }[]>([]);
+  const [sizeSpecsOpen, setSizeSpecsOpen] = useState<string | null>(null);
+  const [tmpSpecK, setTmpSpecK] = useState("");
+  const [tmpSpecV, setTmpSpecV] = useState("");
   const [colors, setColors] = useState<string[]>([]);
   const [colorInput, setColorInput] = useState("");
   const [sku, setSku] = useState("");
@@ -62,6 +66,32 @@ export default function AdminPage() {
   const [bulkBrand, setBulkBrand] = useState("");
 
   const hasAnyDiscount = discountPercent.trim() !== "" || discountAmount.trim() !== "";
+
+  // 💰 معاينة السعر بعد الخصم
+  const basePriceN = Number(price) || 0;
+  const pctN = discountPercent.trim() ? Number(discountPercent) : null;
+  const amtN = discountAmount.trim() ? Number(discountAmount) : null;
+  const discountedFinal = basePriceN > 0 && (pctN || amtN)
+    ? Math.round(Math.min(pctN ? basePriceN * (1 - pctN / 100) : Infinity, amtN ? basePriceN - amtN : Infinity))
+    : null;
+
+  // 🔧 مواصفات مقاس معين
+  const specsForSize = (s: string) => sizeSpecs.find((x) => x.size === s)?.specs ?? [];
+
+  const addSizeSpec = (s: string) => {
+    if (!tmpSpecK.trim() || !tmpSpecV.trim()) return;
+    const existing = sizeSpecs.find((x) => x.size === s);
+    if (existing) {
+      setSizeSpecs(sizeSpecs.map((x) => x.size === s ? { ...x, specs: [...x.specs, { k: tmpSpecK.trim(), v: tmpSpecV.trim() }] } : x));
+    } else {
+      setSizeSpecs([...sizeSpecs, { size: s, specs: [{ k: tmpSpecK.trim(), v: tmpSpecV.trim() }] }]);
+    }
+    setTmpSpecK(""); setTmpSpecV("");
+  };
+
+  const removeSizeSpec = (s: string, idx: number) => {
+    setSizeSpecs(sizeSpecs.map((x) => x.size === s ? { ...x, specs: x.specs.filter((_, j) => j !== idx) } : x));
+  };
 
   const loadBrands = useCallback(async () => setBrands(await getBrands()), []);
 
@@ -90,11 +120,11 @@ export default function AdminPage() {
     if (!name.trim() && !price && !description.trim() && images.length === 0) return;
     const t = setTimeout(() => {
       try {
-        localStorage.setItem(DRAFT_KEY, JSON.stringify({ name, price, discountPercent, discountAmount, discountFrom, discountTo, description, features, brandId, categorySlug, images, sizes, sizePrices, colors, sku, stockStatus, stockQty, specs }));
+        localStorage.setItem(DRAFT_KEY, JSON.stringify({ name, price, discountPercent, discountAmount, discountFrom, discountTo, description, features, brandId, categorySlug, images, sizes, sizePrices, sizeSpecs, colors, sku, stockStatus, stockQty, specs }));
       } catch {}
     }, 1500);
     return () => clearTimeout(t);
-  }, [name, price, discountPercent, discountAmount, discountFrom, discountTo, description, features, brandId, categorySlug, images, sizes, sizePrices, colors, sku, stockStatus, stockQty, specs, editingId]);
+  }, [name, price, discountPercent, discountAmount, discountFrom, discountTo, description, features, brandId, categorySlug, images, sizes, sizePrices, sizeSpecs, colors, sku, stockStatus, stockQty, specs, editingId]);
 
   useEffect(() => {
     try {
@@ -115,7 +145,7 @@ export default function AdminPage() {
       setDiscountAmount(p.discountAmount ?? ""); setDiscountFrom(p.discountFrom ?? ""); setDiscountTo(p.discountTo ?? "");
       setDescription(p.description ?? ""); setFeatures(p.features ?? []); setBrandId(p.brandId ?? "");
       setCategorySlug(p.categorySlug ?? ""); setImages(p.images ?? []);
-      setSizes(p.sizes ?? []); setSizePrices(p.sizePrices ?? []);
+      setSizes(p.sizes ?? []); setSizePrices(p.sizePrices ?? []); setSizeSpecs(p.sizeSpecs ?? []);
       setColors(p.colors ?? []);
       setSku(p.sku ?? ""); setStockStatus(p.stockStatus ?? "available"); setStockQty(p.stockQty ?? "");
       setSpecs(p.specs ?? []);
@@ -129,7 +159,6 @@ export default function AdminPage() {
     setRestoreBanner(false);
   };
 
-  // 🖼️ رفع مع ضغط تلقائي
   const uploadImages = async (files: FileList | null) => {
     if (!files?.length) return;
     setUploading(true);
@@ -205,6 +234,7 @@ export default function AdminPage() {
       images,
       sizes: sizes.length ? sizes : null,
       size_prices: sizePrices.filter((sp) => sp.price.trim()).map((sp) => ({ size: sp.size, price: Number(sp.price) })),
+      size_specs: sizeSpecs.filter((x) => x.specs.length).map((x) => ({ size: x.size, specs: x.specs })),
       colors: colors.length ? colors : null,
       sku: sku.trim() || null,
       stock_status: stockStatus,
@@ -252,7 +282,8 @@ export default function AdminPage() {
     setName(""); setPrice(""); setDiscountPercent(""); setDiscountAmount("");
     setDiscountFrom(""); setDiscountTo(""); setDescription("");
     setFeatures([]); setFeatureInput(""); setImages([]);
-    setSizes([]); setSizeInput(""); setSizePrices([]);
+    setSizes([]); setSizeInput(""); setSizePrices([]); setSizeSpecs([]); setSizeSpecsOpen(null);
+    setTmpSpecK(""); setTmpSpecV("");
     setColors([]); setColorInput("");
     setSku(""); setStockStatus("available"); setStockQty(""); setSpecs([]);
     setSpecKey(""); setSpecVal("");
@@ -282,6 +313,8 @@ export default function AdminPage() {
     setSizes(p.sizes ?? []);
     setSizeInput("");
     setSizePrices((p.size_prices ?? []).map((sp) => ({ size: sp.size, price: String(sp.price) })));
+    setSizeSpecs(p.size_specs ?? []);
+    setSizeSpecsOpen(null);
     setColors(p.colors ?? []);
     setColorInput("");
     setSku(p.sku ?? "");
@@ -361,7 +394,7 @@ export default function AdminPage() {
 
   const exportProducts = () => {
     exportCSV("products.csv",
-      ["الاسم","القسم","الماركة","السعر الأساسي","الخصم %","السعر النهائي","المقاسات بأسعارها","الألوان","SKU","المخزون","المواصفات","الوصف","مميزات","حالة"],
+      ["الاسم","القسم","الماركة","السعر الأساسي","الخصم %","السعر النهائي","المقاسات بأسعارها","المواصفات بكل مقاس","الألوان","SKU","المخزون","المواصفات العامة","الوصف","مميزات","حالة"],
       items.map((p) => {
         const { final, hasDiscount } = priceInfo(p);
         const cat = cats.find((c) => c.slug === p.category_slug);
@@ -371,6 +404,7 @@ export default function AdminPage() {
           (p.size_prices ?? []).length > 0
             ? (p.size_prices ?? []).map((sp) => `${sp.size}: ${sp.price} ج.م`).join(" | ")
             : "سعر موحد",
+          (p.size_specs ?? []).map((ss) => `${ss.size} [${ss.specs.map((sp) => `${sp.k}=${sp.v}`).join(", ")}]`).join(" | "),
           (p.colors ?? []).join(" | "),
           p.sku ?? "", p.stock_status === "available" ? "متاح" : "غير متاح",
           (p.specs ?? []).map((s) => `${s.k}: ${s.v}`).join(" | "),
@@ -426,11 +460,6 @@ export default function AdminPage() {
       <div className="grid lg:grid-cols-3 gap-6 items-start">
         {/* ═══════════ الفورم ═══════════ */}
         <div className="lg:col-span-2 space-y-4">
-          {editingId && (
-            <p className="text-xs font-bold text-orange-400 bg-orange-500/10 border border-orange-500/30 rounded-xl px-4 py-2.5">
-              ✏️ بتعديل منتج موجود — {isDraft && "⚠️ هذا منتج مسودة (غير منشور)"}
-            </p>
-          )}
 
           {/* ─── الأساسيات ─── */}
           <details open className="form-section rounded-3xl bg-[#101a30] border border-white/10 overflow-hidden">
@@ -438,7 +467,7 @@ export default function AdminPage() {
               <span className="inline-grid place-items-center w-10 h-10 rounded-xl bg-orange-500/15 text-orange-400 text-lg">📦</span>
               <div className="flex-1">
                 <h3 className="font-extrabold">الأساسيات</h3>
-                <p className="text-[11px] text-white/40">الاسم والسعر والقسم — الحد الأدنى للنشر</p>
+                <p className="text-[11px] text-white/40">الاسم والسعر الأساسي والقسم</p>
               </div>
               <span className="text-white/30 group-open:rotate-180 transition-transform">▼</span>
             </summary>
@@ -462,63 +491,154 @@ export default function AdminPage() {
             </div>
           </details>
 
-          {/* ─── SKU والمخزون ─── */}
+          {/* ─── المقاسات بأسعارها ومواصفاتها ─── */}
+          <details open className="form-section rounded-3xl bg-[#101a30] border border-white/10 overflow-hidden">
+            <summary className="flex items-center gap-3 p-5 cursor-pointer list-none select-none">
+              <span className="inline-grid place-items-center w-10 h-10 rounded-xl bg-violet-500/15 text-violet-400 text-lg">📏</span>
+              <div className="flex-1">
+                <h3 className="font-extrabold">المقاسات — سعر ومواصفات لكل مقاس</h3>
+                <p className="text-[11px] text-white/40">{sizes.length > 0 ? `${sizes.length} مقاسات` : "أضف مقاسات، وخصص لكل مقاس سعره ومواصفاته"}</p>
+              </div>
+              <span className="text-white/30 group-open:rotate-180 transition-transform">▼</span>
+            </summary>
+            <div className="px-5 pb-5 space-y-3">
+              {sizes.map((s, i) => {
+                const sp = sizePrices.find((x) => x.size === s);
+                const specsOf = specsForSize(s);
+                const isOpen = sizeSpecsOpen === s;
+                return (
+                  <div key={s + i} className="rounded-xl border border-white/10 overflow-hidden">
+                    {/* صف المقاس: شارة + سعر + زرار المواصفات */}
+                    <div className="flex items-center gap-2 p-3 bg-white/[0.02] flex-wrap">
+                      <span className="shrink-0 inline-flex items-center gap-1 text-xs font-bold bg-violet-500/10 border border-violet-500/30 text-violet-300 rounded-full px-3 py-2">
+                        📏 {s}
+                        <button onClick={() => { setSizes(sizes.filter((_, j) => j !== i)); setSizePrices(sizePrices.filter((x) => x.size !== s)); setSizeSpecs(sizeSpecs.filter((x) => x.size !== s)); }} className="text-red-400 hover:text-red-300 font-black" aria-label={`حذف ${s}`}>✕</button>
+                      </span>
+                      <input
+                        inputMode="numeric"
+                        className="flex-1 min-w-32 rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm outline-none focus:border-orange-500/70"
+                        placeholder="سعر هذا المقاس (فاضي = السعر الأساسي)"
+                        value={sp?.price ?? ""}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[^\d.]/g, "");
+                          const others = sizePrices.filter((x) => x.size !== s);
+                          if (val) setSizePrices([...others, { size: s, price: val }]);
+                          else setSizePrices(others);
+                        }}
+                      />
+                      {sp?.price && <span className="shrink-0 text-xs font-bold text-orange-400">ج.م</span>}
+                      <button
+                        onClick={() => setSizeSpecsOpen(isOpen ? null : s)}
+                        className={`shrink-0 rounded-lg px-3 py-2 text-xs font-bold border transition ${
+                          isOpen ? "bg-amber-500/20 border-amber-500/40 text-amber-300" : specsOf.length > 0 ? "bg-amber-500/10 border-amber-500/30 text-amber-300" : "border-white/15 text-white/50 hover:bg-white/5"
+                        }`}
+                      >
+                        🔧 {specsOf.length > 0 ? `مواصفات (${specsOf.length})` : "مواصفات المقاس"}
+                      </button>
+                    </div>
+
+                    {/* محرر مواصفات المقاس */}
+                    {isOpen && (
+                      <div className="border-t border-white/5 p-3 space-y-2 bg-black/20">
+                        {specsOf.map((sp2, j) => (
+                          <div key={j} className="flex items-center justify-between px-3 py-2 rounded-lg bg-white/[0.03]">
+                            <p className="text-xs text-white/70"><span className="font-bold text-white/90">{sp2.k}:</span> {sp2.v}</p>
+                            <button onClick={() => removeSizeSpec(s, j)} className="text-red-400 hover:text-red-300 text-xs font-black">✕</button>
+                          </div>
+                        ))}
+                        <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
+                          <input className={inputCls} placeholder="الخاصية" value={tmpSpecK} onChange={(e) => setTmpSpecK(e.target.value)} />
+                          <input className={inputCls} placeholder="القيمة" value={tmpSpecV} onChange={(e) => setTmpSpecV(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addSizeSpec(s); } }} />
+                          <button onClick={() => addSizeSpec(s)} className="shrink-0 w-11 rounded-xl bg-orange-500 hover:bg-orange-400 font-black text-lg transition">＋</button>
+                        </div>
+                        <p className="text-[11px] text-white/30">💡 هذه المواصفات تظهر للعميل لما يختار مقاس "{s}" — مثال: القدرة، السعة</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              <div className="flex gap-2">
+                <input className={inputCls} placeholder="اكتب مقاسًا جديدًا واضغط Enter — مثال: 8 بوصة" value={sizeInput} onChange={(e) => setSizeInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && sizeInput.trim()) { e.preventDefault(); if (!sizes.includes(sizeInput.trim())) { setSizes([...sizes, sizeInput.trim()]); setSizeInput(""); } } }} />
+                <button onClick={() => { if (sizeInput.trim() && !sizes.includes(sizeInput.trim())) { setSizes([...sizes, sizeInput.trim()]); setSizeInput(""); } }} className="shrink-0 w-11 rounded-xl bg-orange-500 hover:bg-orange-400 font-black text-lg transition">＋</button>
+              </div>
+              {sizes.length > 0 && (
+                <p className="text-[11px] text-white/30">💡 المقاس من غير سعر بياخد السعر الأساسي — وكل مقاس ممكن يديه مواصفاته الخاصة 🔧</p>
+              )}
+            </div>
+          </details>
+
+          {/* ─── الخصم ─── */}
           <details className="form-section rounded-3xl bg-[#101a30] border border-white/10 overflow-hidden">
             <summary className="flex items-center gap-3 p-5 cursor-pointer list-none select-none">
-              <span className="inline-grid place-items-center w-10 h-10 rounded-xl bg-cyan-500/15 text-cyan-400 text-lg">🏷️</span>
+              <span className="inline-grid place-items-center w-10 h-10 rounded-xl bg-red-500/15 text-red-400 text-lg">🔥</span>
               <div className="flex-1">
-                <h3 className="font-extrabold">كود المنتج والمخزون</h3>
-                <p className="text-[11px] text-white/40">{stockStatus === "available" ? "✅ متاح للبيع" : "🚫 غير متاح حاليًا"}</p>
+                <h3 className="font-extrabold">عرض وخصم</h3>
+                <p className="text-[11px] text-white/40">{hasAnyDiscount ? "🔥 خصم نشط" : "اختياري — خانة واحدة فقط"}</p>
               </div>
               <span className="text-white/30 group-open:rotate-180 transition-transform">▼</span>
             </summary>
             <div className="px-5 pb-5 space-y-4">
-              <div className="grid sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                  <label className={labelCls}>🔢 كود المنتج SKU</label>
-                  <input dir="ltr" className={inputCls} placeholder="LB-BLW-008" value={sku} onChange={(e) => setSku(e.target.value)} />
+                  <label className={labelCls}>نسبة %</label>
+                  <input className={inputCls} inputMode="numeric" placeholder="15" value={discountPercent} onChange={(e) => { setDiscountPercent(e.target.value.replace(/[^\d.]/g, "")); setDiscountAmount(""); }} />
                 </div>
                 <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                  <label className={labelCls}>حالة المخزون</label>
-                  <select className={inputCls} value={stockStatus} onChange={(e) => setStockStatus(e.target.value)}>
-                    <option value="available" className="bg-[#101a30]">✅ متاح</option>
-                    <option value="unavailable" className="bg-[#101a30]">🚫 غير متاح</option>
-                  </select>
+                  <label className={labelCls}>مبلغ ج.م</label>
+                  <input className={inputCls} inputMode="numeric" placeholder="200" value={discountAmount} onChange={(e) => { setDiscountAmount(e.target.value.replace(/[^\d.]/g, "")); setDiscountPercent(""); }} />
+                </div>
+              </div>
+              {/* 💰 معاينة السعر بعد الخصم */}
+              {discountedFinal != null && (
+                <div className="rounded-xl border border-green-500/30 bg-green-500/5 p-4 flex items-center justify-center gap-4">
+                  <span className="text-lg font-bold text-red-400 line-through">{basePriceN} ج.م</span>
+                  <span className="text-2xl font-black text-green-400">{discountedFinal} ج.م</span>
+                  <span className="text-[11px] font-bold text-green-300 bg-green-500/10 rounded-full px-2.5 py-1">سعر العميل بعد الخصم</span>
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                  <label className={labelCls}>📅 من</label>
+                  <input type="date" dir="ltr" className={inputCls} value={discountFrom} onChange={(e) => setDiscountFrom(e.target.value)} />
                 </div>
                 <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                  <label className={labelCls}>الكمية المتاحة</label>
-                  <input className={inputCls} inputMode="numeric" placeholder="10" value={stockQty} onChange={(e) => setStockQty(e.target.value.replace(/\D/g, ""))} />
+                  <label className={labelCls}>📅 إلى</label>
+                  <input type="date" dir="ltr" className={inputCls} value={discountTo} onChange={(e) => setDiscountTo(e.target.value)} />
                 </div>
               </div>
             </div>
           </details>
 
-          {/* ─── المواصفات الفنية ─── */}
+          {/* ─── المواصفات العامة ─── */}
           <details className="form-section rounded-3xl bg-[#101a30] border border-white/10 overflow-hidden">
             <summary className="flex items-center gap-3 p-5 cursor-pointer list-none select-none">
               <span className="inline-grid place-items-center w-10 h-10 rounded-xl bg-amber-500/15 text-amber-400 text-lg">🔧</span>
               <div className="flex-1">
-                <h3 className="font-extrabold">المواصفات الفنية</h3>
-                <p className="text-[11px] text-white/40">{specs.length > 0 ? `${specs.length} مواصفات` : "القدرة، السعة، الضمان، بلد المنشأ..."}</p>
+                <h3 className="font-extrabold">المواصفات العامة (لكل المنتج)</h3>
+                <p className="text-[11px] text-white/40">{specs.length > 0 ? `${specs.length} مواصفات عامة` : "مشتركة بين كل المقاسات — الضمان، بلد المنشأ..."}</p>
               </div>
               <span className="text-white/30 group-open:rotate-180 transition-transform">▼</span>
             </summary>
             <div className="px-5 pb-5 space-y-4">
               <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
-                <input className={inputCls} placeholder="الخاصية — مثال: القدرة" value={specKey} onChange={(e) => setSpecKey(e.target.value)} />
-                <input className={inputCls} placeholder="القيمة — مثال: 120 وات" value={specVal} onChange={(e) => setSpecVal(e.target.value)} />
+                <input className={inputCls} placeholder="الخاصية — مثال: الضمان" value={specKey} onChange={(e) => setSpecKey(e.target.value)} />
+                <input className={inputCls} placeholder="القيمة — مثال: سنتان" value={specVal} onChange={(e) => setSpecVal(e.target.value)} />
                 <button onClick={() => { if (specKey.trim() && specVal.trim()) { setSpecs([...specs, { k: specKey.trim(), v: specVal.trim() }]); setSpecKey(""); setSpecVal(""); } }} className="shrink-0 w-11 rounded-xl bg-orange-500 hover:bg-orange-400 font-black text-lg transition">＋</button>
               </div>
               {specs.length > 0 && (
                 <div className="rounded-xl border border-white/10 overflow-hidden">
                   {specs.map((s, i) => (
-                    <div key={s.k + i} className="flex items-center justify-between px-4 py-2.5 border-b border-white/5 last:border-0 bg-white/[0.02]">
+                    <div key={s.k + i} className="flex items-center justify-between px-4 py-2.5 border-b border-white/5 last:border-0 bg-white/[0.02] group/row">
                       <p className="text-xs text-white/70"><span className="font-bold text-white/90">{s.k}:</span> {s.v}</p>
-                      <button onClick={() => setSpecs(specs.filter((_, j) => j !== i))} className="text-red-400 hover:text-red-300 text-xs font-black">✕</button>
+                      <div className="flex gap-1.5">
+                        <button onClick={() => { const nv = [...specs]; nv[i] = { k: s.v, v: s.k }; setSpecs(nv); }} title="قلب الخصائص" className="w-7 h-7 grid place-items-center rounded-lg bg-white/5 border border-white/10 text-white/50 hover:bg-white/10 text-xs transition">⇄</button>
+                        <button onClick={() => setSpecs(specs.filter((_, j) => j !== i))} className="w-7 h-7 grid place-items-center rounded-lg bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500/25 text-xs transition">✕</button>
+                      </div>
                     </div>
                   ))}
                 </div>
               )}
+              <p className="text-[11px] text-white/30">💡 المواصفات العامة بتظهر لكل المقاسات — والمواصفات الخاصة بكل مقاس بتظهر لما يختاره</p>
             </div>
           </details>
 
@@ -557,91 +677,49 @@ export default function AdminPage() {
             </div>
           </details>
 
-          {/* ─── الخصم ─── */}
+          {/* ─── SKU والمخزون ─── */}
           <details className="form-section rounded-3xl bg-[#101a30] border border-white/10 overflow-hidden">
             <summary className="flex items-center gap-3 p-5 cursor-pointer list-none select-none">
-              <span className="inline-grid place-items-center w-10 h-10 rounded-xl bg-red-500/15 text-red-400 text-lg">🔥</span>
+              <span className="inline-grid place-items-center w-10 h-10 rounded-xl bg-cyan-500/15 text-cyan-400 text-lg">🏷️</span>
               <div className="flex-1">
-                <h3 className="font-extrabold">عرض وخصم</h3>
-                <p className="text-[11px] text-white/40">{hasAnyDiscount ? "🔥 خصم نشط" : "اختياري — خانة واحدة فقط"}</p>
+                <h3 className="font-extrabold">كود المنتج والمخزون</h3>
+                <p className="text-[11px] text-white/40">{stockStatus === "available" ? "✅ متاح للبيع" : "🚫 غير متاح حاليًا"}</p>
               </div>
               <span className="text-white/30 group-open:rotate-180 transition-transform">▼</span>
             </summary>
             <div className="px-5 pb-5 space-y-4">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid sm:grid-cols-3 gap-3">
                 <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                  <label className={labelCls}>نسبة %</label>
-                  <input className={inputCls} inputMode="numeric" placeholder="15" value={discountPercent} onChange={(e) => { setDiscountPercent(e.target.value.replace(/[^\d.]/g, "")); setDiscountAmount(""); }} />
+                  <label className={labelCls}>🔢 كود المنتج SKU</label>
+                  <input dir="ltr" className={inputCls} placeholder="LB-BLW-008" value={sku} onChange={(e) => setSku(e.target.value)} />
                 </div>
                 <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                  <label className={labelCls}>مبلغ ج.م</label>
-                  <input className={inputCls} inputMode="numeric" placeholder="200" value={discountAmount} onChange={(e) => { setDiscountAmount(e.target.value.replace(/[^\d.]/g, "")); setDiscountPercent(""); }} />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                  <label className={labelCls}>📅 من</label>
-                  <input type="date" dir="ltr" className={inputCls} value={discountFrom} onChange={(e) => setDiscountFrom(e.target.value)} />
+                  <label className={labelCls}>حالة المخزون</label>
+                  <select className={inputCls} value={stockStatus} onChange={(e) => setStockStatus(e.target.value)}>
+                    <option value="available" className="bg-[#101a30]">✅ متاح</option>
+                    <option value="unavailable" className="bg-[#101a30]">🚫 غير متاح</option>
+                  </select>
                 </div>
                 <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                  <label className={labelCls}>📅 إلى</label>
-                  <input type="date" dir="ltr" className={inputCls} value={discountTo} onChange={(e) => setDiscountTo(e.target.value)} />
+                  <label className={labelCls}>الكمية المتاحة</label>
+                  <input className={inputCls} inputMode="numeric" placeholder="10" value={stockQty} onChange={(e) => setStockQty(e.target.value.replace(/\D/g, ""))} />
                 </div>
               </div>
             </div>
           </details>
 
-          {/* ─── الخيارات: مقاسات بأسعار + ألوان ─── */}
-          <details open className="form-section rounded-3xl bg-[#101a30] border border-white/10 overflow-hidden">
+          {/* ─── الألوان ─── */}
+          <details className="form-section rounded-3xl bg-[#101a30] border border-white/10 overflow-hidden">
             <summary className="flex items-center gap-3 p-5 cursor-pointer list-none select-none">
-              <span className="inline-grid place-items-center w-10 h-10 rounded-xl bg-violet-500/15 text-violet-400 text-lg">🎨</span>
+              <span className="inline-grid place-items-center w-10 h-10 rounded-xl bg-pink-500/15 text-pink-400 text-lg">🎨</span>
               <div className="flex-1">
-                <h3 className="font-extrabold">الخيارات المتاحة</h3>
-                <p className="text-[11px] text-white/40">{sizes.length > 0 ? `${sizes.length} مقاسات` : "مقاسات بأسعار مختلفة + ألوان"}</p>
+                <h3 className="font-extrabold">الألوان المتاحة</h3>
+                <p className="text-[11px] text-white/40">{colors.length > 0 ? `${colors.length} ألوان` : "ألوان يختار منها العميل"}</p>
               </div>
               <span className="text-white/30 group-open:rotate-180 transition-transform">▼</span>
             </summary>
             <div className="px-5 pb-5 space-y-4">
-              {/* 📏 المقاسات — كل مقاس له سعر اختياري */}
               <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <label className={labelCls}>📏 المقاسات — ممكن تخصص لكل مقاس سعر مختلف</label>
-                <div className="space-y-2">
-                  {sizes.map((s, i) => {
-                    const sp = sizePrices.find((x) => x.size === s);
-                    return (
-                      <div key={s + i} className="flex items-center gap-2">
-                        <span className="shrink-0 inline-flex items-center gap-1 text-xs font-bold bg-violet-500/10 border border-violet-500/30 text-violet-300 rounded-full px-3 py-2">
-                          📏 {s}
-                          <button onClick={() => { setSizes(sizes.filter((_, j) => j !== i)); setSizePrices(sizePrices.filter((x) => x.size !== s)); }} className="text-red-400 hover:text-red-300 font-black" aria-label={`حذف ${s}`}>✕</button>
-                        </span>
-                        <input
-                          inputMode="numeric"
-                          className="flex-1 rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm outline-none focus:border-orange-500/70"
-                          placeholder="سعر خاص بالمقاس (اختياري — فاضي = السعر الأساسي)"
-                          value={sp?.price ?? ""}
-                          onChange={(e) => {
-                            const val = e.target.value.replace(/[^\d.]/g, "");
-                            const others = sizePrices.filter((x) => x.size !== s);
-                            if (val) setSizePrices([...others, { size: s, price: val }]);
-                            else setSizePrices(others);
-                          }}
-                        />
-                        {sp?.price && <span className="shrink-0 text-xs font-bold text-orange-400">ج.م</span>}
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="flex gap-2 mt-2">
-                  <input className={inputCls} placeholder="اكتب مقاسًا جديدًا واضغط Enter" value={sizeInput} onChange={(e) => setSizeInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && sizeInput.trim()) { e.preventDefault(); if (!sizes.includes(sizeInput.trim())) { setSizes([...sizes, sizeInput.trim()]); setSizeInput(""); } } }} />
-                  <button onClick={() => { if (sizeInput.trim() && !sizes.includes(sizeInput.trim())) { setSizes([...sizes, sizeInput.trim()]); setSizeInput(""); } }} className="shrink-0 w-11 rounded-xl bg-orange-500 hover:bg-orange-400 font-black text-lg transition">＋</button>
-                </div>
-                {sizes.length > 0 && (
-                  <p className="text-[11px] text-white/30 mt-2">💡 المقاس اللي من غير سعر = بياخد السعر الأساسي للمنتج</p>
-                )}
-              </div>
-
-              <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <label className={labelCls}>🎨 الألوان</label>
                 <div className="flex gap-2">
                   <input className={inputCls} placeholder="مثال: فضي — Enter" value={colorInput} onChange={(e) => setColorInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && colorInput.trim()) { e.preventDefault(); if (!colors.includes(colorInput.trim())) setColors([...colors, colorInput.trim()]); setColorInput(""); } }} />
                   <button onClick={() => { if (colorInput.trim() && !colors.includes(colorInput.trim())) { setColors([...colors, colorInput.trim()]); setColorInput(""); } }} className="shrink-0 w-11 rounded-xl bg-orange-500 hover:bg-orange-400 font-black text-lg transition">＋</button>
@@ -804,6 +882,7 @@ export default function AdminPage() {
                   <p className="text-[11px] text-white/40 font-bold mt-0.5">
                     {cat?.name ?? p.category_slug} {p.brand?.name && `• 🏷️ ${p.brand.name}`} • <span className="text-orange-400">{final} ج.م</span>{hasDiscount && " 🔥"}
                     {(p.size_prices ?? []).length > 0 && ` • 💰 أسعار بالمقاس`}
+                    {(p.size_specs ?? []).length > 0 && ` • 🔧 مواصفات بالمقاس`}
                   </p>
                 </div>
                 <button onClick={() => duplicateItem(p)} title="نسخة من المنتج" className="shrink-0 text-xs font-bold border border-blue-500/30 text-blue-400 hover:bg-blue-500/10 rounded-lg px-3 py-2 transition">📋</button>

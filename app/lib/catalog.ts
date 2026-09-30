@@ -22,6 +22,7 @@ export interface DbProduct {
   images: string[];
   sizes: string[] | null;
   size_prices: { size: string; price: number }[] | null;
+  size_specs: { size: string; specs: { k: string; v: string }[] }[] | null;
   colors: string[] | null;
   sku: string | null;
   stock_status: string | null;
@@ -42,9 +43,9 @@ export interface DbCategory {
   is_active: boolean;
 }
 
-const SELECT = "*, brand:brands(id, name), sizes, colors, size_prices, sku, stock_status, stock_qty, specs, is_draft";
+const SELECT = "*, brand:brands(id, name), sizes, colors, size_prices, size_specs, sku, stock_status, stock_qty, specs, is_draft";
 
-// 💰 حساب السعر النهائي
+// 💰 حساب السعر النهائي للمنتج (بدون مقاس)
 export function priceInfo(p: DbProduct) {
   const today = new Date().toISOString().slice(0, 10);
   const active =
@@ -60,6 +61,12 @@ export function priceInfo(p: DbProduct) {
   const final = Math.max(0, Math.round(Math.min(byPercent, byAmount)));
   const percentOff = base > 0 ? Math.round(((base - final) / base) * 100) : 0;
   return { base, final, hasDiscount: true, percentOff };
+}
+
+// 💰📏 سعر مقاس معين — بياخد سعر المقاس لو موجود، ويطبق الخصم عليه
+export function priceForSize(p: DbProduct, size: string) {
+  const sizePrice = (p.size_prices ?? []).find((sp) => sp.size === size)?.price;
+  return priceInfo({ ...p, price: sizePrice ?? p.price });
 }
 
 export async function getCategories(onlyActive = true): Promise<DbCategory[]> {
