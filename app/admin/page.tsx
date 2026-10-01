@@ -26,6 +26,7 @@ export default function AdminPage() {
   const [price, setPrice] = useState("");
   const [discountPercent, setDiscountPercent] = useState("");
   const [discountAmount, setDiscountAmount] = useState("");
+  const [discountSource, setDiscountSource] = useState<"pct" | "amt" | null>(null);
   const [discountFrom, setDiscountFrom] = useState("");
   const [discountTo, setDiscountTo] = useState("");
   const [description, setDescription] = useState("");
@@ -68,39 +69,44 @@ export default function AdminPage() {
   const [bulkPct, setBulkPct] = useState("");
   const [bulkBrand, setBulkBrand] = useState("");
 
-  const hasAnyDiscount = discountPercent.trim() !== "" || discountAmount.trim() !== "";
+  const round2 = (n: number) => Math.round(n * 100) / 100;
+  const cleanNum = (v: string) => v.replace(/[^\d.]/g, "").replace(/(\..*)\./g, "$1");
 
   const basePriceN = Number(price) || 0;
-  const pctN = discountPercent.trim() ? Number(discountPercent) : null;
-  const amtN = discountAmount.trim() ? Number(discountAmount) : null;
-  const discountedFinal = basePriceN > 0 && (pctN || amtN)
-    ? Math.round(Math.min(pctN ? basePriceN * (1 - pctN / 100) : Infinity, amtN ? basePriceN - amtN : Infinity))
-    : null;
+  const rawPct = Number(discountPercent) || 0;
+  const rawAmt = Number(discountAmount) || 0;
 
-  // 🔒 الخصم الذكي — الحقل المحسوب يبقى مقفول (مبلور)
-  const pctFilled = discountPercent.trim() !== "";
-  const amtFilled = discountAmount.trim() !== "";
+  // قيمة الخصم بالجنيه — بتتحسب من الحقل اللي اتكتب فيه
+  const discountValueN =
+    basePriceN <= 0 ? 0
+    : discountSource === "pct" ? round2((basePriceN * rawPct) / 100)
+    : discountSource === "amt" ? round2(rawAmt)
+    : 0;
+
+  const hasAnyDiscount = discountValueN > 0;
+  const discountPctN = hasAnyDiscount ? round2((discountValueN / basePriceN) * 100) : 0;
+  const discountedFinal = hasAnyDiscount ? round2(Math.max(basePriceN - discountValueN, 0)) : null;
+
+  // 🔒 الخصم الذكي — الحقل اللي اتكتب فيه حر، والتاني محسوب ومقفول
+  const pctFilled = discountSource === "pct";
+  const amtFilled = discountSource === "amt";
+  const percentShown = amtFilled ? (hasAnyDiscount ? String(discountPctN) : "") : discountPercent;
+  const amountShown = pctFilled ? (hasAnyDiscount ? String(discountValueN) : "") : discountAmount;
 
   const handlePercentChange = (val: string) => {
-    const clean = val.replace(/[^\d.]/g, "");
+    let clean = cleanNum(val);
+    if (Number(clean) > 99) clean = "99";
     setDiscountPercent(clean);
-    const p = Number(clean);
-    if (p > 0 && basePriceN > 0) {
-      setDiscountAmount(String(Math.round(basePriceN * (1 - p / 100))));
-    } else if (!clean) {
-      setDiscountAmount("");
-    }
+    setDiscountAmount("");
+    setDiscountSource(clean ? "pct" : null);
   };
 
   const handleAmountChange = (val: string) => {
-    const clean = val.replace(/[^\d.]/g, "");
+    let clean = cleanNum(val);
+    if (basePriceN > 0 && Number(clean) >= basePriceN) clean = String(Math.max(basePriceN - 1, 0));
     setDiscountAmount(clean);
-    const a = Number(clean);
-    if (a > 0 && basePriceN > 0 && a <= basePriceN) {
-      setDiscountPercent(String(Math.round((a / basePriceN) * 100)));
-    } else if (!clean) {
-      setDiscountPercent("");
-    }
+    setDiscountPercent("");
+    setDiscountSource(clean ? "amt" : null);
   };
 
   // 🔧 مواصفات المقاسات — كل مقاس مواصفاته الخاصة
@@ -183,8 +189,11 @@ export default function AdminPage() {
       const d = localStorage.getItem(DRAFT_KEY);
       if (!d) return;
       const p = JSON.parse(d);
-      setName(p.name ?? ""); setPrice(p.price ?? ""); setDiscountPercent(p.discountPercent ?? "");
-      setDiscountAmount(p.discountAmount ?? ""); setDiscountFrom(p.discountFrom ?? ""); setDiscountTo(p.discountTo ?? "");
+      setName(p.name ?? ""); setPrice(p.price ?? "");
+      if (p.discountPercent) { setDiscountPercent(p.discountPercent); setDiscountAmount(""); setDiscountSource("pct"); }
+      else if (p.discountAmount) { setDiscountAmount(p.discountAmount); setDiscountPercent(""); setDiscountSource("amt"); }
+      else { setDiscountPercent(""); setDiscountAmount(""); setDiscountSource(null); }
+      setDiscountFrom(p.discountFrom ?? ""); setDiscountTo(p.discountTo ?? "");
       setDescription(p.description ?? ""); setFeatures(p.features ?? []); setBrandId(p.brandId ?? "");
       setCategorySlug(p.categorySlug ?? ""); setImages(p.images ?? []);
       setSizes(p.sizes ?? []); setSizePrices(p.sizePrices ?? []); setSizeSpecs(p.sizeSpecs ?? []);
@@ -257,8 +266,13 @@ export default function AdminPage() {
     if (!priceN || priceN <= 0) { if (!silent) setMsg("💰 اكتب سعر صحيح"); return null; }
     if (!categorySlug) { if (!silent) setMsg("🗂️ اختر القسم"); return null; }
 
-    const pct = discountPercent.trim() ? Number(discountPercent) : null;
-    const amt = discountAmount.trim() ? Number(discountAmount) : null;
+    if (discountFrom && discountTo && discountTo < discountFrom) {
+      if (!silent) setMsg("📅 تاريخ انتهاء الخصم قبل تاريخ البداية");
+      return null;
+    }
+
+    const pct = hasAnyDiscount ? discountPctN : null;
+    const amt = hasAnyDiscount ? discountValueN : null; // قيمة الخصم بالجنيه، مش السعر النهائي
 
     setBusy(true);
     const payload = {
@@ -322,6 +336,7 @@ export default function AdminPage() {
 
   const resetFormKeepContext = () => {
     setName(""); setPrice(""); setDiscountPercent(""); setDiscountAmount("");
+    setDiscountSource(null);
     setDiscountFrom(""); setDiscountTo(""); setDescription("");
     setFeatures([]); setFeatureInput(""); setImages([]);
     setSizes([]); setSizeInput(""); setSizePrices([]); setSizeSpecs([]); setSizeSpecsOpen(null);
@@ -344,8 +359,9 @@ export default function AdminPage() {
     setIsDraft(!!p.is_draft);
     setName(p.name);
     setPrice(String(p.price));
-    setDiscountPercent(p.discount_percent != null ? String(p.discount_percent) : "");
-    setDiscountAmount(p.discount_amount != null ? String(p.discount_amount) : "");
+    if (p.discount_percent != null) { setDiscountPercent(String(p.discount_percent)); setDiscountAmount(""); setDiscountSource("pct"); }
+    else if (p.discount_amount != null) { setDiscountAmount(String(p.discount_amount)); setDiscountPercent(""); setDiscountSource("amt"); }
+    else { setDiscountPercent(""); setDiscountAmount(""); setDiscountSource(null); }
     setDiscountFrom(p.discount_from ?? "");
     setDiscountTo(p.discount_to ?? "");
     setDescription(p.description ?? "");
@@ -582,21 +598,33 @@ export default function AdminPage() {
             </summary>
             <div className="px-5 pb-5 space-y-4">
               <div className="grid grid-cols-2 gap-3">
-                {/* النسبة — حرة */}
-                <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                  <label className={labelCls}>نسبة الخصم %</label>
-                  <input className={inputCls} inputMode="numeric" placeholder="10" value={discountPercent} onChange={(e) => handlePercentChange(e.target.value)} />
-                </div>
-                {/* المبلغ — مقفول لو النسبة مليانة */}
+                {/* النسبة — مقفولة لو المبلغ هو اللي اتكتب */}
                 <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
                   <label className={labelCls}>
-                    قيمة الخصم — اللي وفّرته للعميل
-                    {pctFilled && <span className="text-[10px] text-orange-400 font-black mr-1">🔒 محسوب تلقائيًا</span>}                  </label>
+                    نسبة الخصم %
+                    {amtFilled && <span className="text-[10px] text-orange-400 font-black mr-1">🔒 محسوبة تلقائيًا</span>}
+                  </label>
                   <input
                     className={inputCls}
-                    inputMode="numeric"
+                    inputMode="decimal"
+                    placeholder="10"
+                    value={percentShown}
+                    onChange={(e) => handlePercentChange(e.target.value)}
+                    readOnly={amtFilled}
+                    style={amtFilled ? { opacity: 0.7, cursor: "not-allowed" } : {}}
+                  />
+                </div>
+                {/* المبلغ — مقفول لو النسبة هي اللي اتكتبت */}
+                <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                  <label className={labelCls}>
+                    قيمة الخصم ج.م
+                    {pctFilled && <span className="text-[10px] text-orange-400 font-black mr-1">🔒 محسوب تلقائيًا</span>}
+                  </label>
+                  <input
+                    className={inputCls}
+                    inputMode="decimal"
                     placeholder="165"
-                    value={discountAmount}
+                    value={amountShown}
                     onChange={(e) => handleAmountChange(e.target.value)}
                     readOnly={pctFilled}
                     style={pctFilled ? { opacity: 0.7, cursor: "not-allowed" } : {}}
@@ -611,7 +639,9 @@ export default function AdminPage() {
                   <div className="flex items-center gap-3 flex-wrap">
                     <span className="text-xl font-bold text-red-400 line-through decoration-2">{basePriceN} ج.م</span>
                     <span className="text-3xl font-black text-green-400">{discountedFinal} ج.م</span>
-                    <span className="text-[11px] font-black text-white bg-red-500 rounded-full px-2.5 py-1">وفّرت {basePriceN - discountedFinal} ج.م — العميل يدفع {discountedFinal} ج.م</span>
+                    <span className="text-[11px] font-black text-white bg-red-500 rounded-full px-2.5 py-1">
+                      وفّر {discountValueN} ج.م ({discountPctN}%)
+                    </span>
                   </div>
                 </div>
               )}
