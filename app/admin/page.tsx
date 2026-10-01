@@ -70,7 +70,6 @@ export default function AdminPage() {
 
   const hasAnyDiscount = discountPercent.trim() !== "" || discountAmount.trim() !== "";
 
-  // 💰 حساب السعر بعد الخصم
   const basePriceN = Number(price) || 0;
   const pctN = discountPercent.trim() ? Number(discountPercent) : null;
   const amtN = discountAmount.trim() ? Number(discountAmount) : null;
@@ -185,7 +184,6 @@ export default function AdminPage() {
     setRestoreBanner(false);
   };
 
-  // 🖼️ رفع مع ضغط تلقائي
   const uploadImages = async (files: FileList | null) => {
     if (!files?.length) return;
     setUploading(true);
@@ -314,6 +312,7 @@ export default function AdminPage() {
     setColors([]); setColorInput("");
     setSku(""); setStockStatus("available"); setStockQty(""); setSpecs([]);
     setSpecKey(""); setSpecVal("");
+    setEditingSpecIdx(null);
     setEditingId(null); setIsDraft(false);
   };
 
@@ -443,7 +442,6 @@ export default function AdminPage() {
     );
   };
 
-  // ✏️ حفظ تعديل مواصفة
   const saveSpecEdit = () => {
     if (editingSpecIdx === null) return;
     if (!editSpecKey.trim() || !editSpecVal.trim()) return;
@@ -525,7 +523,7 @@ export default function AdminPage() {
             </div>
           </div>
 
-          {/* ─── 1. الأساسيات ─── */}
+          {/* ─── الأساسيات ─── */}
           <details open className="form-section rounded-3xl bg-[#101a30] border border-white/10 overflow-hidden">
             <summary className="flex items-center gap-3 p-5 cursor-pointer list-none select-none">
               <span className="inline-grid place-items-center w-10 h-10 rounded-xl bg-orange-500/15 text-orange-400 text-lg">📦</span>
@@ -537,12 +535,12 @@ export default function AdminPage() {
             </summary>
             <div className="px-5 pb-5 space-y-4">
               <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <label className={labelCls}>📦 اسم المنتج <span className="text-white/30 font-normal">— العميل هيشوفه كعنوان رئيسي للمنتج</span></label>
+                <label className={labelCls}>📦 اسم المنتج <span className="text-white/30 font-normal">— العميل يشوفه كعنوان رئيسي</span></label>
                 <input className={inputCls} placeholder="مثال: بلاور هواء LUFTBERG" value={name} onChange={(e) => setName(e.target.value)} />
               </div>
               <div className="grid sm:grid-cols-2 gap-3">
                 <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                  <label className={labelCls}>💰 السعر الأساسي (ج.م) <span className="text-white/30 font-normal">— العميل هيشوفه في الكروت</span></label>
+                  <label className={labelCls}>💰 السعر الأساسي (ج.م)</label>
                   <input className={inputCls} inputMode="numeric" placeholder="1650" value={price} onChange={(e) => setPrice(e.target.value.replace(/[^\d.]/g, ""))} />
                 </div>
                 <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
@@ -555,13 +553,13 @@ export default function AdminPage() {
             </div>
           </details>
 
-          {/* ─── 2. الخصم الذكي ─── */}
+          {/* ─── الخصم الذكي ─── */}
           <details open className="form-section rounded-3xl bg-[#101a30] border border-white/10 overflow-hidden">
             <summary className="flex items-center gap-3 p-5 cursor-pointer list-none select-none">
               <span className="inline-grid place-items-center w-10 h-10 rounded-xl bg-red-500/15 text-red-400 text-lg">🔥</span>
               <div className="flex-1">
                 <h3 className="font-extrabold">عرض وخصم</h3>
-                <p className="text-[11px] text-white/40">{hasAnyDiscount ? "🔥 خصم نشط — العميل هيشوف السعرين" : "اكتب النسبة أو المبلغ — الآخر يُحسب تلقائيًا"}</p>
+                <p className="text-[11px] text-white/40">{hasAnyDiscount ? "🔥 خصم نشط — الحساب تلقائي بالاتجاهين" : "اكتب النسبة أو المبلغ — الآخر يُحسب تلقائيًا"}</p>
               </div>
               <span className="text-white/30 group-open:rotate-180 transition-transform">▼</span>
             </summary>
@@ -577,7 +575,6 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              {/* 💰 معاينة حية: القديم مشطوب + الجديد — هيظهر للعميل كده بالظبط */}
               {discountedFinal != null && (
                 <div className="rounded-2xl border border-green-500/30 bg-green-500/5 p-4">
                   <p className="text-[11px] font-bold text-white/40 mb-2">👁️ هكذا سيظهر السعر للعميل:</p>
@@ -591,31 +588,31 @@ export default function AdminPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                  <label className={labelCls}>📅 الخصم يبدأ من</label>
+                  <label className={labelCls}>📅 يبدأ من</label>
                   <input type="date" dir="ltr" className={inputCls} value={discountFrom} onChange={(e) => setDiscountFrom(e.target.value)} />
                 </div>
                 <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                  <label className={labelCls}>📅 وينتهي في</label>
+                  <label className={labelCls}>📅 ينتهي في</label>
                   <input type="date" dir="ltr" className={inputCls} value={discountTo} onChange={(e) => setDiscountTo(e.target.value)} />
                 </div>
               </div>
             </div>
           </details>
 
-          {/* ─── 3. الخيارات: مقاسات بأسعار ومواصفات + ألوان ─── */}
+          {/* ─── الخيارات ─── */}
           <details open className="form-section rounded-3xl bg-[#101a30] border border-white/10 overflow-hidden">
             <summary className="flex items-center gap-3 p-5 cursor-pointer list-none select-none">
               <span className="inline-grid place-items-center w-10 h-10 rounded-xl bg-violet-500/15 text-violet-400 text-lg">📏</span>
               <div className="flex-1">
                 <h3 className="font-extrabold">الخيارات المتاحة</h3>
-                <p className="text-[11px] text-white/40">{sizes.length > 0 ? `${sizes.length} مقاسات — بأسعار ومواصفات خاصة` : "مقاسات بأسعار مختلفة + مواصفات لكل مقاس + ألوان"}</p>
+                <p className="text-[11px] text-white/40">{sizes.length > 0 ? `${sizes.length} مقاسات — بأسعار ومواصفات خاصة` : "مقاسات بأسعار مختلفة + مواصفات لكل مقاس"}</p>
               </div>
               <span className="text-white/30 group-open:rotate-180 transition-transform">▼</span>
             </summary>
             <div className="px-5 pb-5 space-y-3">
               {sizes.map((s, i) => {
                 const sp = sizePrices.find((x) => x.size === s);
-                const specsOf = sizeSpecs.find((x) => x.size === s)?.specs ?? [];
+                const specsOf = specsForSize(s);
                 const isOpen = sizeSpecsOpen === s;
                 return (
                   <div key={s + i} className="rounded-xl border border-white/10 overflow-hidden">
@@ -657,7 +654,7 @@ export default function AdminPage() {
                           <input className={inputCls} placeholder="القيمة" value={tmpSpecV} onChange={(e) => setTmpSpecV(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addSizeSpec(s); } }} />
                           <button onClick={() => addSizeSpec(s)} className="shrink-0 w-11 rounded-xl bg-orange-500 hover:bg-orange-400 font-black text-lg transition">＋</button>
                         </div>
-                        <p className="text-[11px] text-white/30">👁️ هذه المواصفات ستظهر للعميل عند اختياره مقاس "{s}" فقط</p>
+                        <p className="text-[11px] text-white/30">👁️ تظهر للعميل عند اختياره مقاس "{s}" — في قائمة منسدلة أنيقة</p>
                       </div>
                     )}
                   </div>
@@ -667,11 +664,10 @@ export default function AdminPage() {
                 <input className={inputCls} placeholder="اكتب مقاسًا جديدًا واضغط Enter — مثال: 8 بوصة" value={sizeInput} onChange={(e) => setSizeInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && sizeInput.trim()) { e.preventDefault(); if (!sizes.includes(sizeInput.trim())) { setSizes([...sizes, sizeInput.trim()]); setSizeInput(""); } } }} />
                 <button onClick={() => { if (sizeInput.trim() && !sizes.includes(sizeInput.trim())) { setSizes([...sizes, sizeInput.trim()]); setSizeInput(""); } }} className="shrink-0 w-11 rounded-xl bg-orange-500 hover:bg-orange-400 font-black text-lg transition">＋</button>
               </div>
-              {sizes.length > 0 && <p className="text-[11px] text-white/30">💡 المقاس بلا سعر = يأخذ السعر الأساسي — ويمكن تخصيص مواصفات لكل مقاس</p>}
+              {sizes.length > 0 && <p className="text-[11px] text-white/30">💡 المقاس بلا سعر = السعر الأساسي — والعميل يشوف السعر بعد اختياره</p>}
 
-              {/* 🎨 الألوان */}
               <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <label className={labelCls}>🎨 الألوان <span className="text-white/30 font-normal">— العميل يختارها كأزرار</span></label>
+                <label className={labelCls}>🎨 الألوان (اختيارية للعميل)</label>
                 <div className="flex gap-2">
                   <input className={inputCls} placeholder="مثال: فضي — Enter" value={colorInput} onChange={(e) => setColorInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && colorInput.trim()) { e.preventDefault(); if (!colors.includes(colorInput.trim())) setColors([...colors, colorInput.trim()]); setColorInput(""); } }} />
                   <button onClick={() => { if (colorInput.trim() && !colors.includes(colorInput.trim())) { setColors([...colors, colorInput.trim()]); setColorInput(""); } }} className="shrink-0 w-11 rounded-xl bg-orange-500 hover:bg-orange-400 font-black text-lg transition">＋</button>
@@ -690,20 +686,20 @@ export default function AdminPage() {
             </div>
           </details>
 
-          {/* ─── 4. SKU والمخزون ─── */}
+          {/* ─── SKU والمخزون ─── */}
           <details className="form-section rounded-3xl bg-[#101a30] border border-white/10 overflow-hidden">
             <summary className="flex items-center gap-3 p-5 cursor-pointer list-none select-none">
               <span className="inline-grid place-items-center w-10 h-10 rounded-xl bg-cyan-500/15 text-cyan-400 text-lg">🏷️</span>
               <div className="flex-1">
                 <h3 className="font-extrabold">كود المنتج والمخزون</h3>
-                <p className="text-[11px] text-white/40">{stockStatus === "available" ? "✅ متاح للبيع — العميل يشتري عادي" : "🚫 غير متاح — زرار الشراء مقفول للعميل"}</p>
+                <p className="text-[11px] text-white/40">{stockStatus === "available" ? "✅ متاح" : "🚫 غير متاح — زرار الشراء مقفول"}</p>
               </div>
               <span className="text-white/30 group-open:rotate-180 transition-transform">▼</span>
             </summary>
             <div className="px-5 pb-5 space-y-4">
               <div className="grid sm:grid-cols-3 gap-3">
                 <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                  <label className={labelCls}>🔢 كود المنتج SKU <span className="text-white/30 font-normal">— للإدارة والتتبع</span></label>
+                  <label className={labelCls}>🔢 SKU</label>
                   <input dir="ltr" className={inputCls} placeholder="LB-BLW-008" value={sku} onChange={(e) => setSku(e.target.value)} />
                 </div>
                 <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
@@ -714,27 +710,27 @@ export default function AdminPage() {
                   </select>
                 </div>
                 <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                  <label className={labelCls}>الكمية المتاحة</label>
+                  <label className={labelCls}>الكمية</label>
                   <input className={inputCls} inputMode="numeric" placeholder="10" value={stockQty} onChange={(e) => setStockQty(e.target.value.replace(/\D/g, ""))} />
                 </div>
               </div>
             </div>
           </details>
 
-          {/* ─── 5. المواصفات الفنية العامة ─── */}
+          {/* ─── المواصفات العامة ─── */}
           <details className="form-section rounded-3xl bg-[#101a30] border border-white/10 overflow-hidden">
             <summary className="flex items-center gap-3 p-5 cursor-pointer list-none select-none">
               <span className="inline-grid place-items-center w-10 h-10 rounded-xl bg-amber-500/15 text-amber-400 text-lg">🔧</span>
               <div className="flex-1">
-                <h3 className="font-extrabold">المواصفات الفنية العامة</h3>
-                <p className="text-[11px] text-white/40">{specs.length > 0 ? `${specs.length} مواصفات` : "مشتركة بين كل المقاسات — الضمان، بلد المنشأ..."} <span className="text-white/30">— تظهر للعميل كجدول أنيق</span></p>
+                <h3 className="font-extrabold">المواصفات العامة</h3>
+                <p className="text-[11px] text-white/40">{specs.length > 0 ? `${specs.length} مواصفات` : "مشتركة بين كل المقاسات"}</p>
               </div>
               <span className="text-white/30 group-open:rotate-180 transition-transform">▼</span>
             </summary>
             <div className="px-5 pb-5 space-y-4">
               <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
-                <input className={inputCls} placeholder="الخاصية — مثال: القدرة" value={specKey} onChange={(e) => setSpecKey(e.target.value)} />
-                <input className={inputCls} placeholder="القيمة — مثال: 120 وات" value={specVal} onChange={(e) => setSpecVal(e.target.value)} />
+                <input className={inputCls} placeholder="الخاصية" value={specKey} onChange={(e) => setSpecKey(e.target.value)} />
+                <input className={inputCls} placeholder="القيمة" value={specVal} onChange={(e) => setSpecVal(e.target.value)} />
                 <button onClick={() => { if (specKey.trim() && specVal.trim()) { setSpecs([...specs, { k: specKey.trim(), v: specVal.trim() }]); setSpecKey(""); setSpecVal(""); } }} className="shrink-0 w-11 rounded-xl bg-orange-500 hover:bg-orange-400 font-black text-lg transition">＋</button>
               </div>
               {specs.length > 0 && (
@@ -758,37 +754,37 @@ export default function AdminPage() {
                       <div key={i} className="flex items-center justify-between px-4 py-2.5 border-b border-white/5 last:border-0 bg-white/[0.02] group/row">
                         <p className="text-xs text-white/70"><span className="font-bold text-white/90">{s.k}:</span> {s.v}</p>
                         <div className="flex gap-1.5 opacity-0 group-hover/row:opacity-100 transition-opacity">
-                          <button onClick={() => { setEditingSpecIdx(i); setEditSpecKey(s.k); setEditSpecVal(s.v); }} title="تعديل" className="w-7 h-7 grid place-items-center rounded-lg bg-blue-500/15 border border-blue-500/30 text-blue-400 hover:bg-blue-500/25 text-xs transition">✏️</button>
-                          <button onClick={() => setSpecs(specs.filter((_, j) => j !== i))} title="حذف" className="w-7 h-7 grid place-items-center rounded-lg bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500/25 text-xs transition">✕</button>
+                          <button onClick={() => { setEditingSpecIdx(i); setEditSpecKey(s.k); setEditSpecVal(s.v); }} className="w-7 h-7 grid place-items-center rounded-lg bg-blue-500/15 border border-blue-500/30 text-blue-400 hover:bg-blue-500/25 text-xs transition">✏️</button>
+                          <button onClick={() => setSpecs(specs.filter((_, j) => j !== i))} className="w-7 h-7 grid place-items-center rounded-lg bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500/25 text-xs transition">✕</button>
                         </div>
                       </div>
                     );
                   })}
                 </div>
               )}
-              <p className="text-[11px] text-white/30">💡 اقتراحات: القدرة • السعة • الضمان • بلد المنشأ — واضغط ✏️ لتعديل أي سطر لاحقًا</p>
+              <p className="text-[11px] text-white/30">💡 مرر على أي سطر → ✏️ تعديل — المواصفات الخاصة بالمقاسات تكون في قسم المقاسات</p>
             </div>
           </details>
 
-          {/* ─── 6. الوصف والمميزات ─── */}
+          {/* ─── الوصف والمميزات ─── */}
           <details className="form-section rounded-3xl bg-[#101a30] border border-white/10 overflow-hidden">
             <summary className="flex items-center gap-3 p-5 cursor-pointer list-none select-none">
               <span className="inline-grid place-items-center w-10 h-10 rounded-xl bg-blue-500/15 text-blue-400 text-lg">📝</span>
               <div className="flex-1">
                 <h3 className="font-extrabold">الوصف والمميزات</h3>
-                <p className="text-[11px] text-white/40">لماذا يشتري العميل منك تحديدًا؟</p>
+                <p className="text-[11px] text-white/40">لماذا يشتري العميل منك؟</p>
               </div>
               <span className="text-white/30 group-open:rotate-180 transition-transform">▼</span>
             </summary>
             <div className="px-5 pb-5 space-y-4">
               <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <label className={labelCls}>📄 وصف المنتج <span className="text-white/30 font-normal">— يظهر تحت اسم المنتج للعميل</span></label>
-                <textarea className={inputCls + " min-h-24 resize-none"} placeholder="وصف مختصر وجاذب — ما هو، لمن يصلح، وما يميزه..." value={description} onChange={(e) => setDescription(e.target.value)} />
+                <label className={labelCls}>📄 الوصف</label>
+                <textarea className={inputCls + " min-h-24 resize-none"} placeholder="وصف مختصر وجاذب..." value={description} onChange={(e) => setDescription(e.target.value)} />
               </div>
               <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <label className={labelCls}>✅ المميزات <span className="text-white/30 font-normal">— تظهر كقائمة بعلامة ✓ للعميل</span></label>
+                <label className={labelCls}>✅ المميزات</label>
                 <div className="flex gap-2">
-                  <input className={inputCls} placeholder="ميزة واحدة كل مرة — ثم Enter" value={featureInput} onChange={(e) => setFeatureInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && featureInput.trim()) { e.preventDefault(); setFeatures([...features, featureInput.trim()]); setFeatureInput(""); } }} />
+                  <input className={inputCls} placeholder="ميزة واحدة ثم Enter" value={featureInput} onChange={(e) => setFeatureInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && featureInput.trim()) { e.preventDefault(); setFeatures([...features, featureInput.trim()]); setFeatureInput(""); } }} />
                   <button onClick={() => { if (featureInput.trim()) { setFeatures([...features, featureInput.trim()]); setFeatureInput(""); } }} className="shrink-0 w-11 rounded-xl bg-orange-500 hover:bg-orange-400 font-black text-lg transition">＋</button>
                 </div>
                 {features.length > 0 && (
@@ -805,20 +801,20 @@ export default function AdminPage() {
             </div>
           </details>
 
-          {/* ─── 7. الصور والماركة ─── */}
+          {/* ─── الصور والماركة ─── */}
           <details open className="form-section rounded-3xl bg-[#101a30] border border-white/10 overflow-hidden">
             <summary className="flex items-center gap-3 p-5 cursor-pointer list-none select-none">
               <span className="inline-grid place-items-center w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-400 text-lg">🖼️</span>
               <div className="flex-1">
                 <h3 className="font-extrabold">الصور والماركة</h3>
-                <p className="text-[11px] text-white/40">{images.length > 0 ? `📷 ${images.length} صورة — اسحب لترتيبها` : "اسحب الصور هنا أو اضغط للاختيار"}</p>
+                <p className="text-[11px] text-white/40">{images.length > 0 ? `📷 ${images.length} صورة — اسحب لترتيبها` : "اسحب الصور هنا أو اضغط"}</p>
               </div>
               <span className="text-white/30 group-open:rotate-180 transition-transform">▼</span>
             </summary>
             <div className="px-5 pb-5 space-y-4">
               <label className="block rounded-2xl border-2 border-dashed border-white/15 hover:border-orange-500/50 hover:bg-orange-500/5 transition p-6 text-center cursor-pointer">
                 <span className="text-3xl">🖼️</span>
-                <p className="text-sm font-bold mt-1">{uploading ? "جارٍ الرفع والضغط..." : "اسحب الصور هنا أو اضغط للاختيار — تُضغط تلقائيًا لتبقى الموقع سريعًا"}</p>
+                <p className="text-sm font-bold mt-1">{uploading ? "جارٍ الرفع والضغط..." : "اسحب الصور هنا أو اضغط — تُضغط تلقائيًا"}</p>
                 <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => { uploadImages(e.target.files); e.currentTarget.value = ""; }} />
               </label>
               {images.length > 0 && (
@@ -865,7 +861,7 @@ export default function AdminPage() {
           </button>
 
           <button onClick={previewProduct} disabled={busy || uploading || (!name.trim() && images.length === 0)} className="w-full bg-blue-500/15 border border-blue-500/40 text-blue-300 hover:bg-blue-500/25 disabled:opacity-50 rounded-2xl py-3.5 font-bold text-sm transition flex items-center justify-center gap-2">
-            👁️ معاينة كعميل — قبل النشر
+            👁️ معاينة كعميل
           </button>
 
           <div className="rounded-3xl bg-[#101a30] border border-white/10 p-6">
@@ -879,12 +875,6 @@ export default function AdminPage() {
               ))}
               {brands.length === 0 && <p className="text-xs text-white/40 py-4 text-center">لا توجد ماركات بعد</p>}
             </div>
-          </div>
-
-          <div className="rounded-3xl border border-green-500/20 bg-green-500/[0.03] p-5">
-            <p className="text-xs text-white/60 leading-relaxed">
-              🤝 <span className="font-bold text-green-300">المنتجات المشابهة تلقائية</span> — من نفس الماركة أولًا ثم نفس القسم، دون أي جهد يدوي.
-            </p>
           </div>
         </div>
       </div>
@@ -952,18 +942,10 @@ export default function AdminPage() {
                       {p.sku && <span dir="ltr"> • #{p.sku}</span>}
                     </p>
                     <div className="flex gap-1.5 flex-wrap pt-0.5">
-                      {(p.sizes ?? []).length > 0 && (
-                        <span className="text-[10px] font-bold bg-violet-500/10 border border-violet-500/25 text-violet-300 rounded-full px-2.5 py-0.5">📏 {(p.sizes ?? []).length} مقاسات</span>
-                      )}
-                      {(p.colors ?? []).length > 0 && (
-                        <span className="text-[10px] font-bold bg-pink-500/10 border border-pink-500/25 text-pink-300 rounded-full px-2.5 py-0.5">🎨 {(p.colors ?? []).length} ألوان</span>
-                      )}
-                      {(p.specs ?? []).length > 0 && (
-                        <span className="text-[10px] font-bold bg-amber-500/10 border border-amber-500/25 text-amber-300 rounded-full px-2.5 py-0.5">🔧 {(p.specs ?? []).length} مواصفات</span>
-                      )}
-                      {(p.size_prices ?? []).length > 0 && (
-                        <span className="text-[10px] font-bold bg-green-500/10 border border-green-500/25 text-green-300 rounded-full px-2.5 py-0.5">💰 أسعار بالمقاس</span>
-                      )}
+                      {(p.sizes ?? []).length > 0 && <span className="text-[10px] font-bold bg-violet-500/10 border border-violet-500/25 text-violet-300 rounded-full px-2.5 py-0.5">📏 {(p.sizes ?? []).length} مقاسات</span>}
+                      {(p.colors ?? []).length > 0 && <span className="text-[10px] font-bold bg-pink-500/10 border border-pink-500/25 text-pink-300 rounded-full px-2.5 py-0.5">🎨 {(p.colors ?? []).length} ألوان</span>}
+                      {(p.specs ?? []).length > 0 && <span className="text-[10px] font-bold bg-amber-500/10 border border-amber-500/25 text-amber-300 rounded-full px-2.5 py-0.5">🔧 {(p.specs ?? []).length} مواصفات</span>}
+                      {(p.size_prices ?? []).length > 0 && <span className="text-[10px] font-bold bg-green-500/10 border border-green-500/25 text-green-300 rounded-full px-2.5 py-0.5">💰 أسعار بالمقاس</span>}
                     </div>
                     <p className="pt-0.5">
                       {hasDiscount && <span className="text-xs font-bold text-red-400 line-through mr-1.5">{p.price} ج.م</span>}
@@ -972,7 +954,7 @@ export default function AdminPage() {
                   </div>
 
                   <div className="flex gap-1.5 shrink-0 flex-wrap sm:flex-col">
-                    <button onClick={() => duplicateItem(p)} title="نسخة من المنتج" className="text-xs font-bold border border-blue-500/30 text-blue-400 hover:bg-blue-500/10 rounded-lg px-3 py-2 transition">📋</button>
+                    <button onClick={() => duplicateItem(p)} title="نسخة" className="text-xs font-bold border border-blue-500/30 text-blue-400 hover:bg-blue-500/10 rounded-lg px-3 py-2 transition">📋</button>
                     <button onClick={() => editItem(p)} className="text-xs font-bold border border-white/15 hover:bg-white/5 rounded-lg px-4 py-2 transition">✏️ تعديل</button>
                     <button onClick={() => deleteItem(p)} className="text-xs font-bold text-red-400 border border-red-500/30 hover:bg-red-500/10 rounded-lg px-3 py-2 transition">🗑️</button>
                   </div>
