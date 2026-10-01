@@ -612,7 +612,7 @@ export default function AdminPage() {
                   <div className="flex items-center gap-3 flex-wrap">
                     <span className="text-xl font-bold text-red-400 line-through decoration-2">{basePriceN} ج.م</span>
                     <span className="text-3xl font-black text-green-400">{discountedFinal} ج.م</span>
-                    <span className="text-[11px] font-black text-white bg-red-500 rounded-full px-2.5 py-1">وفّر {basePriceN - discountedFinal} ج.م</span>
+                    <span className="text-[11px] font-black text-white bg-red-500 rounded-full px-2.5 py-1">وفّر {basePriceN - discountedFinal} ج.م — السعر يبقى {discountedFinal} ج.م</span>
                   </div>
                 </div>
               )}
