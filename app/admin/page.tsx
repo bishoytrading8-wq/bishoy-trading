@@ -907,6 +907,26 @@ export default function AdminPage() {
                     {isOpen && (
                       <div className="border-t border-white/5 p-3 space-y-2 bg-black/20">
                         <p className="text-[11px] font-bold text-amber-300">⚙️ المواصفات الفنية الخاصة بمقاس "{s}" — العميل هيشوفها لما يختاره</p>
+                                                {/* 📋 نسخ مواصفات من مقاس آخر — بدل ما تكتب كل حاجة تاني */}
+                        {sizes.filter((x) => x !== s).length > 0 && (
+                          <div className="flex items-center gap-2 flex-wrap rounded-lg bg-white/[0.03] border border-white/10 px-3 py-2">
+                            <span className="text-[11px] font-bold text-white/40">📋 انسخ المواصفات من:</span>
+                            {sizes.filter((x) => x !== s).map((other) => (
+                              <button
+                                key={other}
+                                onClick={() => {
+                                  const srcSpecs = specsForSize(other);
+                                  if (srcSpecs.length === 0) { alert(`مقاس "${other}" مفيهوش مواصفات لسه — اكتبها الأول أو انسخ من مقاس تاني`); return; }
+                                  if (!confirm(`انسخ ${srcSpecs.length} مواصفات من مقاس "${other}"؟\nهتستبدل المواصفات الحالية لمقاس "${s}" — وتعدل الأرقام بعدها`)) return;
+                                  setSizeSpecs(sizeSpecs.map((x) => x.size === s ? { ...x, specs: srcSpecs.map((sp) => ({ ...sp })) } : x));
+                                }}
+                                className="text-[10px] font-bold bg-white/5 border border-white/15 hover:border-orange-500/50 text-white/70 hover:text-orange-400 rounded-full px-2.5 py-1 transition"
+                              >
+                                📏 {other}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                         {specsOf.map((sp2, j) => {
                           const isEditing = editingSizeSpec?.size === s && editingSizeSpec.idx === j;
                           if (isEditing) {
