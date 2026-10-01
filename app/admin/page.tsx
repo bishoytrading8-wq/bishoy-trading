@@ -118,7 +118,21 @@ export default function AdminPage() {
     setSizeSpecs(sizeSpecs.map((x) => x.size === s ? { ...x, specs: x.specs.filter((_, j) => j !== idx) } : x));
   };
 
-  const loadBrands = useCallback(async () => setBrands(await getBrands()), []);
+  // 📊 مؤشر إكمال بيانات المنتج
+  const completionPct = Math.round(
+    ((name.trim() ? 1 : 0) +
+      (price.trim() ? 1 : 0) +
+      (categorySlug ? 1 : 0) +
+      (description.trim() ? 1 : 0) +
+      (features.length ? 1 : 0) +
+      (images.length ? 1 : 0) +
+      ((sizes.length || colors.length) ? 1 : 0) +
+      (brandId ? 1 : 0)) / 8 * 100
+  );
+
+  const loadBrands = useCallback(async () => {
+    setBrands(await getBrands());
+  }, []);
 
   const loadItems = useCallback(async () => {
     const { data } = await supabase
@@ -535,7 +549,7 @@ export default function AdminPage() {
             </summary>
             <div className="px-5 pb-5 space-y-4">
               <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <label className={labelCls}>📦 اسم المنتج <span className="text-white/30 font-normal">— العميل يشوفه كعنوان رئيسي</span></label>
+                <label className={labelCls}>📦 اسم المنتج</label>
                 <input className={inputCls} placeholder="مثال: بلاور هواء LUFTBERG" value={name} onChange={(e) => setName(e.target.value)} />
               </div>
               <div className="grid sm:grid-cols-2 gap-3">
