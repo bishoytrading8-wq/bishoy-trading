@@ -221,12 +221,12 @@ export default function AdminPage() {
       (brandId ? 1 : 0)) / 8 * 100
   );
 
-  // 📋 السعر اللي يظهر في قائمة المنتجات
+  // 📋 السعر اللي يظهر في قائمة المنتجات — "يبدأ من" أرخص مقاس بعد خصمه
   const listPrice = (p: DbProduct) => {
     const sps = (p.size_prices ?? []) as DbSizePrice[];
     if (sps.length === 0) {
       const { final, hasDiscount } = priceInfo(p);
-      return { final, original: p.price, hasDiscount, anyDiscount: hasDiscount, fromLabel: false, pct: p.discount_percent ?? null };
+      return { final, original: p.price, hasDiscount, fromLabel: false, pct: p.discount_percent ?? null };
     }
     const rows = sps.map((sp) => {
       const f = sp.discount_amount ? round2(sp.price - sp.discount_amount)
@@ -240,7 +240,6 @@ export default function AdminPage() {
       final: cheapest.final,
       original: cheapest.price,
       hasDiscount: cheapest.final < cheapest.price,
-      anyDiscount: rows.some((r) => r.final < r.price),
       fromLabel: rows.length > 1,
       pct: maxPct > 0 ? maxPct : null,
     };
@@ -397,7 +396,7 @@ export default function AdminPage() {
 
     // الخصم على مستوى المنتج للمنتج الواحد فقط — المقاسات لكل مقاس خصمه جواها
     const pct = sizes.length === 0 && hasAnyDiscount ? discountPctN : null;
-    const amt = sizes.length === 0 && hasAnyDiscount ? discountValueN : null; // قيمة الخصم بالجنيه، مش السعر النهائي
+    const amt = sizes.length === 0 && hasAnyDiscount ? discountValueN : null;
 
     setBusy(true);
     const payload = {
@@ -516,7 +515,7 @@ export default function AdminPage() {
         row.price = String(f ? f.price : p.price); // المقاس القديم بدون سعر ياخد السعر الأساسي
         if (f && f.discount_amount != null) { row.amt = String(f.discount_amount); row.src = "amt"; }
         else if (f && f.discount_percent != null) { row.pct = String(f.discount_percent); row.src = "pct"; }
-        else if (p.discount_percent != null) { row.pct = String(p.discount_percent); row.src = "pct"; } // منتج قديم خصمه على مستوى المنتج
+        else if (p.discount_percent != null) { row.pct = String(p.discount_percent); row.src = "pct"; }
         return row;
       })
     );
@@ -759,7 +758,7 @@ export default function AdminPage() {
             </div>
           </details>
 
-          {/* ─── 💰 الأسعار والمقاسات والخصم — كله في مكان واحد ─── */}
+          {/* ─── 💰 الأسعار والمقاسات والخصم ─── */}
           <details open className="form-section rounded-3xl bg-[#101a30] border border-white/10 overflow-hidden">
             <summary className="flex items-center gap-3 p-5 cursor-pointer list-none select-none">
               <span className="inline-grid place-items-center w-10 h-10 rounded-xl bg-violet-500/15 text-violet-400 text-lg">💰</span>
@@ -830,7 +829,7 @@ export default function AdminPage() {
                 </div>
               )}
 
-              {/* ─ المقاسات: كل مقاس بسعره وخصمه ─ */}
+              {/* ─ المقاسات: كل مقاس بسعره وخصمه ومواصفاته ─ */}
               {sizes.map((s, i) => {
                 const r = getSP(s);
                 const base = Number(r.price) || 0;
@@ -907,7 +906,8 @@ export default function AdminPage() {
                     {isOpen && (
                       <div className="border-t border-white/5 p-3 space-y-2 bg-black/20">
                         <p className="text-[11px] font-bold text-amber-300">⚙️ المواصفات الفنية الخاصة بمقاس "{s}" — العميل هيشوفها لما يختاره</p>
-                                                {/* 📋 نسخ مواصفات من مقاس آخر — بدل ما تكتب كل حاجة تاني */}
+
+                        {/* 📋 نسخ مواصفات من مقاس آخر — بدل ما تكتب كل حاجة تاني */}
                         {sizes.filter((x) => x !== s).length > 0 && (
                           <div className="flex items-center gap-2 flex-wrap rounded-lg bg-white/[0.03] border border-white/10 px-3 py-2">
                             <span className="text-[11px] font-bold text-white/40">📋 انسخ المواصفات من:</span>
@@ -917,8 +917,10 @@ export default function AdminPage() {
                                 onClick={() => {
                                   const srcSpecs = specsForSize(other);
                                   if (srcSpecs.length === 0) { alert(`مقاس "${other}" مفيهوش مواصفات لسه — اكتبها الأول أو انسخ من مقاس تاني`); return; }
-                                  if (!confirm(`انسخ ${srcSpecs.length} مواصفات من مقاس "${other}"؟\nهتستبدل المواصفات الحالية لمقاس "${s}" — وتعدل الأرقام بعدها`)) return;
-                                  setSizeSpecs(sizeSpecs.map((x) => x.size === s ? { ...x, specs: srcSpecs.map((sp) => ({ ...sp })) } : x));
+                                  if (!confirm(`انسخ ${srcSpecs.length} مواصفات من مقاس "${other}"؟\nهتستبدل مواصفات مقاس "${s}" الحالية — وتعدل الأرقام بعدها`)) return;
+                                  // ✅ الإصلاح: نشيل سطر المقاس القديم ونضيف سطر جديد دايمًا — فبيشتغل حتى لو المقاس كان فاضي
+                                  const others = sizeSpecs.filter((x) => x.size !== s);
+                                  setSizeSpecs([...others, { size: s, specs: srcSpecs.map((sp) => ({ ...sp })) }]);
                                 }}
                                 className="text-[10px] font-bold bg-white/5 border border-white/15 hover:border-orange-500/50 text-white/70 hover:text-orange-400 rounded-full px-2.5 py-1 transition"
                               >
@@ -927,6 +929,7 @@ export default function AdminPage() {
                             ))}
                           </div>
                         )}
+
                         {specsOf.map((sp2, j) => {
                           const isEditing = editingSizeSpec?.size === s && editingSizeSpec.idx === j;
                           if (isEditing) {
@@ -1033,17 +1036,17 @@ export default function AdminPage() {
                   })}
                 </div>
               )}
-              <p className="text-[11px] text-white/30">💡 مرر على أي سطر → ✏️ تعديل — والمواصفات الخاصة بكل مقاس تكون في قسم المقاسات فوق</p>
+              <p className="text-[11px] text-white/30">💡 مرر على أي سطر → ✏️ تعديل — والمواصفات الخاصة بكل مقاس تكون في قسم المقاسات</p>
             </div>
           </details>
 
           {/* ─── الوصف والمميزات ─── */}
-          <details open className="form-section rounded-3xl bg-[#101a30] border border-white/10 overflow-hidden">
+          <details className="form-section rounded-3xl bg-[#101a30] border border-white/10 overflow-hidden">
             <summary className="flex items-center gap-3 p-5 cursor-pointer list-none select-none">
               <span className="inline-grid place-items-center w-10 h-10 rounded-xl bg-blue-500/15 text-blue-400 text-lg">📝</span>
               <div className="flex-1">
                 <h3 className="font-extrabold">الوصف والمميزات</h3>
-                <p className="text-[11px] text-white/40">المميزات واحدة للمنتج كله — ووصف عام يشترك بين المقاسات</p>
+                <p className="text-[11px] text-white/40">المميزات واحدة للمنتج كله — والوصف عام</p>
               </div>
               <span className="text-white/30 group-open:rotate-180 transition-transform">▼</span>
             </summary>
@@ -1267,7 +1270,7 @@ export default function AdminPage() {
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <p className="font-extrabold truncate">{p.name}</p>
                       {p.stock_status === "unavailable" && <span className="text-[10px] rounded-full px-2 py-0.5 bg-red-500/15 text-red-300 font-bold">🚫 غير متاح</span>}
-                      {lp.anyDiscount && <span className="text-[10px] rounded-full px-2 py-0.5 bg-red-500/15 text-red-300 font-bold">🔥 خصم {lp.pct ?? ""}%</span>}
+                      {lp.hasDiscount && <span className="text-[10px] rounded-full px-2 py-0.5 bg-red-500/15 text-red-300 font-bold">🔥 خصم {lp.pct ?? ""}%</span>}
                     </div>
                     <p className="text-[11px] text-white/40 font-bold">
                       {cat?.name ?? p.category_slug} {p.brand?.name && `• 🏷️ ${p.brand.name}`}
@@ -1280,7 +1283,7 @@ export default function AdminPage() {
                       {(p.size_prices ?? []).length > 0 && <span className="text-[10px] font-bold bg-green-500/10 border border-green-500/25 text-green-300 rounded-full px-2.5 py-0.5">💰 أسعار بالمقاس</span>}
                     </div>
                     <p className="pt-0.5">
-                      {lp.fromLabel && <span className="text-[10px] font-bold text-white/40 mr-1.5">يبدأ من</span>}
+                      {lp.fromLabel && <span className="text-[11px] font-bold text-white/40 mr-1">يبدأ من</span>}
                       {lp.hasDiscount && <span className="text-xs font-bold text-red-400 line-through mr-1.5">{lp.original} ج.م</span>}
                       <span className="font-black text-orange-400 text-lg">{lp.final} ج.م</span>
                     </p>
