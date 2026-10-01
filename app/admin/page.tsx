@@ -42,6 +42,9 @@ export default function AdminPage() {
   const [sizeSpecsOpen, setSizeSpecsOpen] = useState<string | null>(null);
   const [tmpSpecK, setTmpSpecK] = useState("");
   const [tmpSpecV, setTmpSpecV] = useState("");
+  const [editingSizeSpec, setEditingSizeSpec] = useState<{ size: string; idx: number } | null>(null);
+  const [editSizeSpecK, setEditSizeSpecK] = useState("");
+  const [editSizeSpecV, setEditSizeSpecV] = useState("");
   const [colors, setColors] = useState<string[]>([]);
   const [colorInput, setColorInput] = useState("");
   const [sku, setSku] = useState("");
@@ -125,6 +128,24 @@ export default function AdminPage() {
 
   const removeSizeSpec = (s: string, idx: number) => {
     setSizeSpecs(sizeSpecs.map((x) => x.size === s ? { ...x, specs: x.specs.filter((_, j) => j !== idx) } : x));
+  };
+
+  const cancelSizeSpecEdit = () => {
+    setEditingSizeSpec(null);
+    setEditSizeSpecK("");
+    setEditSizeSpecV("");
+  };
+
+  const saveSizeSpecEdit = () => {
+    if (!editingSizeSpec) return;
+    if (!editSizeSpecK.trim() || !editSizeSpecV.trim()) return;
+    const { size, idx } = editingSizeSpec;
+    setSizeSpecs(sizeSpecs.map((x) =>
+      x.size === size
+        ? { ...x, specs: x.specs.map((sp, j) => (j === idx ? { k: editSizeSpecK.trim(), v: editSizeSpecV.trim() } : sp)) }
+        : x
+    ));
+    cancelSizeSpecEdit();
   };
 
   // 📊 مؤشر إكمال
@@ -341,6 +362,7 @@ export default function AdminPage() {
     setFeatures([]); setFeatureInput(""); setImages([]);
     setSizes([]); setSizeInput(""); setSizePrices([]); setSizeSpecs([]); setSizeSpecsOpen(null);
     setTmpSpecK(""); setTmpSpecV("");
+    cancelSizeSpecEdit();
     setColors([]); setColorInput("");
     setSku(""); setStockStatus("available"); setStockQty(""); setSpecs([]);
     setSpecKey(""); setSpecVal("");
@@ -706,12 +728,32 @@ export default function AdminPage() {
                     {isOpen && (
                       <div className="border-t border-white/5 p-3 space-y-2 bg-black/20">
                         <p className="text-[11px] font-bold text-amber-300">⚙️ المواصفات الفنية الخاصة بمقاس "{s}" — العميل هيشوفها لما يختاره</p>
-                        {specsOf.map((sp2, j) => (
-                          <div key={j} className="flex items-center justify-between px-3 py-2 rounded-lg bg-white/[0.03]">
-                            <p className="text-xs text-white/70"><span className="font-bold text-white/90">{sp2.k}:</span> {sp2.v}</p>
-                            <button onClick={() => removeSizeSpec(s, j)} className="text-red-400 hover:text-red-300 text-xs font-black">✕</button>
-                          </div>
-                        ))}
+                        {specsOf.map((sp2, j) => {
+                          const isEditing = editingSizeSpec?.size === s && editingSizeSpec.idx === j;
+                          if (isEditing) {
+                            return (
+                              <div key={j} className="p-3 rounded-lg bg-orange-500/5 border border-orange-500/20 space-y-2">
+                                <div className="grid grid-cols-2 gap-2">
+                                  <input className={inputCls} value={editSizeSpecK} onChange={(e) => setEditSizeSpecK(e.target.value)} placeholder="الخاصية" autoFocus />
+                                  <input className={inputCls} value={editSizeSpecV} onChange={(e) => setEditSizeSpecV(e.target.value)} placeholder="القيمة" onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); saveSizeSpecEdit(); } if (e.key === "Escape") cancelSizeSpecEdit(); }} />
+                                </div>
+                                <div className="flex gap-2 justify-end">
+                                  <button onClick={cancelSizeSpecEdit} className="border border-white/15 hover:bg-white/5 rounded-lg px-4 py-1.5 text-xs font-bold transition">إلغاء</button>
+                                  <button onClick={saveSizeSpecEdit} className="bg-green-500/20 border border-green-500/40 text-green-300 rounded-lg px-4 py-1.5 text-xs font-bold transition hover:bg-green-500/30">💾 حفظ</button>
+                                </div>
+                              </div>
+                            );
+                          }
+                          return (
+                            <div key={j} className="flex items-center justify-between px-3 py-2 rounded-lg bg-white/[0.03]">
+                              <p className="text-xs text-white/70"><span className="font-bold text-white/90">{sp2.k}:</span> {sp2.v}</p>
+                              <div className="flex gap-1.5">
+                                <button onClick={() => { setEditingSizeSpec({ size: s, idx: j }); setEditSizeSpecK(sp2.k); setEditSizeSpecV(sp2.v); }} title="تعديل" className="w-7 h-7 grid place-items-center rounded-lg bg-blue-500/15 border border-blue-500/30 text-blue-400 hover:bg-blue-500/25 text-xs transition">✏️</button>
+                                <button onClick={() => { removeSizeSpec(s, j); cancelSizeSpecEdit(); }} title="حذف" className="w-7 h-7 grid place-items-center rounded-lg bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500/25 text-xs transition">✕</button>
+                              </div>
+                            </div>
+                          );
+                        })}
                         <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
                           <input className={inputCls} placeholder="الخاصية — مثال: القدرة" value={tmpSpecK} onChange={(e) => setTmpSpecK(e.target.value)} />
                           <input className={inputCls} placeholder="القيمة — مثال: 120 وات" value={tmpSpecV} onChange={(e) => setTmpSpecV(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addSizeSpec(s); } }} />
