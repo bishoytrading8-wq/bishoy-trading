@@ -77,7 +77,10 @@ export default function AdminPage() {
     ? Math.round(Math.min(pctN ? basePriceN * (1 - pctN / 100) : Infinity, amtN ? basePriceN - amtN : Infinity))
     : null;
 
-  // 🔄 حساب تلقائي متبادل: النسبة ↔ المبلغ
+  // 🔒 الخصم الذكي — الحقل المحسوب يبقى مقفول (مبلور)
+  const pctFilled = discountPercent.trim() !== "";
+  const amtFilled = discountAmount.trim() !== "";
+
   const handlePercentChange = (val: string) => {
     const clean = val.replace(/[^\d.]/g, "");
     setDiscountPercent(clean);
@@ -100,7 +103,7 @@ export default function AdminPage() {
     }
   };
 
-  // 🔧 مواصفات المقاسات
+  // 🔧 مواصفات المقاسات — كل مقاس مواصفاته الخاصة
   const specsForSize = (s: string) => sizeSpecs.find((x) => x.size === s)?.specs ?? [];
 
   const addSizeSpec = (s: string) => {
@@ -118,7 +121,7 @@ export default function AdminPage() {
     setSizeSpecs(sizeSpecs.map((x) => x.size === s ? { ...x, specs: x.specs.filter((_, j) => j !== idx) } : x));
   };
 
-  // 📊 مؤشر إكمال بيانات المنتج
+  // 📊 مؤشر إكمال
   const completionPct = Math.round(
     ((name.trim() ? 1 : 0) +
       (price.trim() ? 1 : 0) +
@@ -153,7 +156,7 @@ export default function AdminPage() {
     }
   }, [can, loadBrands, loadItems]);
 
-  // 💾 حفظ مسودة تلقائي
+  // 💾 مسودة تلقائية
   useEffect(() => {
     if (editingId) return;
     if (!name.trim() && !price && !description.trim() && images.length === 0) return;
@@ -507,7 +510,7 @@ export default function AdminPage() {
 
       {restoreBanner && (
         <div className="rounded-2xl border border-blue-500/40 bg-blue-500/10 px-5 py-4 mb-6 flex flex-wrap items-center justify-between gap-3 animate-rise-in">
-          <p className="text-sm font-bold text-blue-200">💾 وجدنا مسودة محفوظة من جلسة سابقة — هل تسترجعها؟</p>
+          <p className="text-sm font-bold text-blue-200">💾 وجدنا مسودة محفوظة — هل تسترجعها؟</p>
           <div className="flex gap-2">
             <button onClick={restoreDraft} className="bg-blue-500 hover:bg-blue-400 text-white rounded-lg px-4 py-2 text-xs font-bold transition">استرجاع</button>
             <button onClick={discardDraft} className="border border-white/15 hover:bg-white/5 rounded-lg px-4 py-2 text-xs font-bold transition">تجاهل</button>
@@ -543,7 +546,7 @@ export default function AdminPage() {
               <span className="inline-grid place-items-center w-10 h-10 rounded-xl bg-orange-500/15 text-orange-400 text-lg">📦</span>
               <div className="flex-1">
                 <h3 className="font-extrabold">الأساسيات</h3>
-                <p className="text-[11px] text-white/40">الاسم والسعر والقسم — الحد الأدنى للنشر</p>
+                <p className="text-[11px] text-white/40">الاسم والسعر الأساسي والقسم</p>
               </div>
               <span className="text-white/30 group-open:rotate-180 transition-transform">▼</span>
             </summary>
@@ -567,28 +570,42 @@ export default function AdminPage() {
             </div>
           </details>
 
-          {/* ─── الخصم الذكي ─── */}
+          {/* ─── 🔥 الخصم الذكي — المحسوب مقفول ─── */}
           <details open className="form-section rounded-3xl bg-[#101a30] border border-white/10 overflow-hidden">
             <summary className="flex items-center gap-3 p-5 cursor-pointer list-none select-none">
               <span className="inline-grid place-items-center w-10 h-10 rounded-xl bg-red-500/15 text-red-400 text-lg">🔥</span>
               <div className="flex-1">
                 <h3 className="font-extrabold">عرض وخصم</h3>
-                <p className="text-[11px] text-white/40">{hasAnyDiscount ? "🔥 خصم نشط — الحساب تلقائي بالاتجاهين" : "اكتب النسبة أو المبلغ — الآخر يُحسب تلقائيًا"}</p>
+                <p className="text-[11px] text-white/40">{hasAnyDiscount ? "🔥 خصم نشط — الحقل المحسوب مقفول تلقائيًا" : "اكتب النسبة أو المبلغ — والآخر يُحسب مقفولًا"}</p>
               </div>
               <span className="text-white/30 group-open:rotate-180 transition-transform">▼</span>
             </summary>
             <div className="px-5 pb-5 space-y-4">
               <div className="grid grid-cols-2 gap-3">
+                {/* النسبة — حرة */}
                 <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
                   <label className={labelCls}>نسبة الخصم %</label>
                   <input className={inputCls} inputMode="numeric" placeholder="10" value={discountPercent} onChange={(e) => handlePercentChange(e.target.value)} />
                 </div>
+                {/* المبلغ — مقفول لو النسبة مليانة */}
                 <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                  <label className={labelCls}>قيمة الخصم ج.م</label>
-                  <input className={inputCls} inputMode="numeric" placeholder="165" value={discountAmount} onChange={(e) => handleAmountChange(e.target.value)} />
+                  <label className={labelCls}>
+                    قيمة الخصم ج.م
+                    {pctFilled && <span className="text-[10px] text-orange-400 font-black mr-1">🔒 محسوب تلقائيًا</span>}
+                  </label>
+                  <input
+                    className={inputCls}
+                    inputMode="numeric"
+                    placeholder="165"
+                    value={discountAmount}
+                    onChange={(e) => handleAmountChange(e.target.value)}
+                    readOnly={pctFilled}
+                    style={pctFilled ? { opacity: 0.7, cursor: "not-allowed" } : {}}
+                  />
                 </div>
               </div>
 
+              {/* 💰 معاينة حية */}
               {discountedFinal != null && (
                 <div className="rounded-2xl border border-green-500/30 bg-green-500/5 p-4">
                   <p className="text-[11px] font-bold text-white/40 mb-2">👁️ هكذا سيظهر السعر للعميل:</p>
@@ -613,13 +630,13 @@ export default function AdminPage() {
             </div>
           </details>
 
-          {/* ─── الخيارات ─── */}
+          {/* ─── 📏 المقاسات — سعر + مواصفات خاصة لكل مقاس ─── */}
           <details open className="form-section rounded-3xl bg-[#101a30] border border-white/10 overflow-hidden">
             <summary className="flex items-center gap-3 p-5 cursor-pointer list-none select-none">
               <span className="inline-grid place-items-center w-10 h-10 rounded-xl bg-violet-500/15 text-violet-400 text-lg">📏</span>
               <div className="flex-1">
-                <h3 className="font-extrabold">الخيارات المتاحة</h3>
-                <p className="text-[11px] text-white/40">{sizes.length > 0 ? `${sizes.length} مقاسات — بأسعار ومواصفات خاصة` : "مقاسات بأسعار مختلفة + مواصفات لكل مقاس"}</p>
+                <h3 className="font-extrabold">المقاسات — سعر ومواصفات خاصة لكل مقاس</h3>
+                <p className="text-[11px] text-white/40">{sizes.length > 0 ? `${sizes.length} مقاسات` : "كل مقاس له سعره ومواصفاته الفنية الخاصة — والعميل يشوف مواصفات مقاسه بس"}</p>
               </div>
               <span className="text-white/30 group-open:rotate-180 transition-transform">▼</span>
             </summary>
@@ -638,7 +655,7 @@ export default function AdminPage() {
                       <input
                         inputMode="numeric"
                         className="flex-1 min-w-32 rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm outline-none focus:border-orange-500/70"
-                        placeholder="سعر خاص بالمقاس (فاضي = السعر الأساسي)"
+                        placeholder="سعر هذا المقاس (فاضي = السعر الأساسي)"
                         value={sp?.price ?? ""}
                         onChange={(e) => {
                           const val = e.target.value.replace(/[^\d.]/g, "");
@@ -652,11 +669,14 @@ export default function AdminPage() {
                         onClick={() => setSizeSpecsOpen(isOpen ? null : s)}
                         className={`shrink-0 rounded-lg px-3 py-2 text-xs font-bold border transition ${isOpen ? "bg-amber-500/20 border-amber-500/40 text-amber-300" : specsOf.length > 0 ? "bg-amber-500/10 border-amber-500/30 text-amber-300" : "border-white/15 text-white/50 hover:bg-white/5"}`}
                       >
-                        🔧 {specsOf.length > 0 ? `مواصفات (${specsOf.length})` : "مواصفات"}
+                        🔧 {specsOf.length > 0 ? `مواصفات (${specsOf.length})` : "مواصفات هذا المقاس"}
                       </button>
                     </div>
+
+                    {/* 🔧 مواصفات هذا المقاس تحديدًا */}
                     {isOpen && (
                       <div className="border-t border-white/5 p-3 space-y-2 bg-black/20">
+                        <p className="text-[11px] font-bold text-amber-300">⚙️ المواصفات الفنية الخاصة بمقاس "{s}" — العميل هيشوفها لما يختاره</p>
                         {specsOf.map((sp2, j) => (
                           <div key={j} className="flex items-center justify-between px-3 py-2 rounded-lg bg-white/[0.03]">
                             <p className="text-xs text-white/70"><span className="font-bold text-white/90">{sp2.k}:</span> {sp2.v}</p>
@@ -664,11 +684,10 @@ export default function AdminPage() {
                           </div>
                         ))}
                         <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
-                          <input className={inputCls} placeholder="الخاصية" value={tmpSpecK} onChange={(e) => setTmpSpecK(e.target.value)} />
-                          <input className={inputCls} placeholder="القيمة" value={tmpSpecV} onChange={(e) => setTmpSpecV(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addSizeSpec(s); } }} />
+                          <input className={inputCls} placeholder="الخاصية — مثال: القدرة" value={tmpSpecK} onChange={(e) => setTmpSpecK(e.target.value)} />
+                          <input className={inputCls} placeholder="القيمة — مثال: 120 وات" value={tmpSpecV} onChange={(e) => setTmpSpecV(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addSizeSpec(s); } }} />
                           <button onClick={() => addSizeSpec(s)} className="shrink-0 w-11 rounded-xl bg-orange-500 hover:bg-orange-400 font-black text-lg transition">＋</button>
                         </div>
-                        <p className="text-[11px] text-white/30">👁️ تظهر للعميل عند اختياره مقاس "{s}" — في قائمة منسدلة أنيقة</p>
                       </div>
                     )}
                   </div>
@@ -678,20 +697,86 @@ export default function AdminPage() {
                 <input className={inputCls} placeholder="اكتب مقاسًا جديدًا واضغط Enter — مثال: 8 بوصة" value={sizeInput} onChange={(e) => setSizeInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && sizeInput.trim()) { e.preventDefault(); if (!sizes.includes(sizeInput.trim())) { setSizes([...sizes, sizeInput.trim()]); setSizeInput(""); } } }} />
                 <button onClick={() => { if (sizeInput.trim() && !sizes.includes(sizeInput.trim())) { setSizes([...sizes, sizeInput.trim()]); setSizeInput(""); } }} className="shrink-0 w-11 rounded-xl bg-orange-500 hover:bg-orange-400 font-black text-lg transition">＋</button>
               </div>
-              {sizes.length > 0 && <p className="text-[11px] text-white/30">💡 المقاس بلا سعر = السعر الأساسي — والعميل يشوف السعر بعد اختياره</p>}
+              {sizes.length > 0 && <p className="text-[11px] text-white/30">💡 كل مقاس مستقل: سعره الخاص + مواصفاته الخاصة — والعميل يشوف مواصفات المقاس اللي اختاره فقط</p>}
+            </div>
+          </details>
 
-              <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <label className={labelCls}>🎨 الألوان (اختيارية للعميل)</label>
-                <div className="flex gap-2">
-                  <input className={inputCls} placeholder="مثال: فضي — Enter" value={colorInput} onChange={(e) => setColorInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && colorInput.trim()) { e.preventDefault(); if (!colors.includes(colorInput.trim())) setColors([...colors, colorInput.trim()]); setColorInput(""); } }} />
-                  <button onClick={() => { if (colorInput.trim() && !colors.includes(colorInput.trim())) { setColors([...colors, colorInput.trim()]); setColorInput(""); } }} className="shrink-0 w-11 rounded-xl bg-orange-500 hover:bg-orange-400 font-black text-lg transition">＋</button>
+          {/* ─── 🔧 المواصفات العامة ─── */}
+          <details className="form-section rounded-3xl bg-[#101a30] border border-white/10 overflow-hidden">
+            <summary className="flex items-center gap-3 p-5 cursor-pointer list-none select-none">
+              <span className="inline-grid place-items-center w-10 h-10 rounded-xl bg-amber-500/15 text-amber-400 text-lg">🔧</span>
+              <div className="flex-1">
+                <h3 className="font-extrabold">المواصفات العامة (لكل المنتج)</h3>
+                <p className="text-[11px] text-white/40">{specs.length > 0 ? `${specs.length} مواصفات عامة` : "مشتركة بين كل المقاسات — الضمان، بلد المنشأ..."} <span className="text-white/30">— تظهر كجدول أنيق للعميل</span></p>
+              </div>
+              <span className="text-white/30 group-open:rotate-180 transition-transform">▼</span>
+            </summary>
+            <div className="px-5 pb-5 space-y-4">
+              <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
+                <input className={inputCls} placeholder="الخاصية — مثال: الضمان" value={specKey} onChange={(e) => setSpecKey(e.target.value)} />
+                <input className={inputCls} placeholder="القيمة — مثال: سنتان" value={specVal} onChange={(e) => setSpecVal(e.target.value)} />
+                <button onClick={() => { if (specKey.trim() && specVal.trim()) { setSpecs([...specs, { k: specKey.trim(), v: specVal.trim() }]); setSpecKey(""); setSpecVal(""); } }} className="shrink-0 w-11 rounded-xl bg-orange-500 hover:bg-orange-400 font-black text-lg transition">＋</button>
+              </div>
+              {specs.length > 0 && (
+                <div className="rounded-xl border border-white/10 overflow-hidden">
+                  {specs.map((s, i) => {
+                    if (editingSpecIdx === i) {
+                      return (
+                        <div key={i} className="p-3 border-b border-white/5 bg-orange-500/5 space-y-2">
+                          <div className="grid grid-cols-2 gap-2">
+                            <input className={inputCls} value={editSpecKey} onChange={(e) => setEditSpecKey(e.target.value)} placeholder="الخاصية" autoFocus />
+                            <input className={inputCls} value={editSpecVal} onChange={(e) => setEditSpecVal(e.target.value)} placeholder="القيمة" onKeyDown={(e) => { if (e.key === "Enter") saveSpecEdit(); if (e.key === "Escape") cancelSpecEdit(); }} />
+                          </div>
+                          <div className="flex gap-2 justify-end">
+                            <button onClick={cancelSpecEdit} className="border border-white/15 hover:bg-white/5 rounded-lg px-4 py-1.5 text-xs font-bold transition">إلغاء</button>
+                            <button onClick={saveSpecEdit} className="bg-green-500/20 border border-green-500/40 text-green-300 rounded-lg px-4 py-1.5 text-xs font-bold transition hover:bg-green-500/30">💾 حفظ</button>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div key={i} className="flex items-center justify-between px-4 py-2.5 border-b border-white/5 last:border-0 bg-white/[0.02] group/row">
+                        <p className="text-xs text-white/70"><span className="font-bold text-white/90">{s.k}:</span> {s.v}</p>
+                        <div className="flex gap-1.5 opacity-0 group-hover/row:opacity-100 transition-opacity">
+                          <button onClick={() => { setEditingSpecIdx(i); setEditSpecKey(s.k); setEditSpecVal(s.v); }} title="تعديل" className="w-7 h-7 grid place-items-center rounded-lg bg-blue-500/15 border border-blue-500/30 text-blue-400 hover:bg-blue-500/25 text-xs transition">✏️</button>
+                          <button onClick={() => setSpecs(specs.filter((_, j) => j !== i))} title="حذف" className="w-7 h-7 grid place-items-center rounded-lg bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500/25 text-xs transition">✕</button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-                {colors.length > 0 && (
+              )}
+              <p className="text-[11px] text-white/30">💡 مرر على أي سطر → ✏️ تعديل — والمواصفات الخاصة بكل مقاس تكون في قسم المقاسات فوق</p>
+            </div>
+          </details>
+
+          {/* ─── الوصف والمميزات ─── */}
+          <details open className="form-section rounded-3xl bg-[#101a30] border border-white/10 overflow-hidden">
+            <summary className="flex items-center gap-3 p-5 cursor-pointer list-none select-none">
+              <span className="inline-grid place-items-center w-10 h-10 rounded-xl bg-blue-500/15 text-blue-400 text-lg">📝</span>
+              <div className="flex-1">
+                <h3 className="font-extrabold">الوصف والمميزات</h3>
+                <p className="text-[11px] text-white/40">المميزات واحدة للمنتج كله — ووصف عام يشترك بين المقاسات</p>
+              </div>
+              <span className="text-white/30 group-open:rotate-180 transition-transform">▼</span>
+            </summary>
+            <div className="px-5 pb-5 space-y-4">
+              <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <label className={labelCls}>📄 وصف المنتج</label>
+                <textarea className={inputCls + " min-h-24 resize-none"} placeholder="وصف مختصر وجاذب..." value={description} onChange={(e) => setDescription(e.target.value)} />
+              </div>
+              <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <label className={labelCls}>✅ المميزات — واحدة للمنتج كله</label>
+                <div className="flex gap-2">
+                  <input className={inputCls} placeholder="ميزة واحدة ثم Enter" value={featureInput} onChange={(e) => setFeatureInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && featureInput.trim()) { e.preventDefault(); setFeatures([...features, featureInput.trim()]); setFeatureInput(""); } }} />
+                  <button onClick={() => { if (featureInput.trim()) { setFeatures([...features, featureInput.trim()]); setFeatureInput(""); } }} className="shrink-0 w-11 rounded-xl bg-orange-500 hover:bg-orange-400 font-black text-lg transition">＋</button>
+                </div>
+                {features.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-3">
-                    {colors.map((c, i) => (
-                      <span key={c + i} className="inline-flex items-center gap-1.5 text-xs font-bold bg-pink-500/10 border border-pink-500/30 text-pink-300 rounded-full px-3 py-1.5">
-                        🎨 {c}
-                        <button onClick={() => setColors(colors.filter((_, j) => j !== i))} className="text-red-400 hover:text-red-300 font-black">✕</button>
+                    {features.map((f, i) => (
+                      <span key={f + i} className="inline-flex items-center gap-1.5 text-xs font-bold bg-orange-500/10 border border-orange-500/30 text-orange-300 rounded-full px-3 py-1.5">
+                        ✓ {f}
+                        <button onClick={() => setFeatures(features.filter((_, j) => j !== i))} className="text-red-400 hover:text-red-300 font-black">✕</button>
                       </span>
                     ))}
                   </div>
@@ -731,82 +816,28 @@ export default function AdminPage() {
             </div>
           </details>
 
-          {/* ─── المواصفات العامة ─── */}
+          {/* ─── الألوان ─── */}
           <details className="form-section rounded-3xl bg-[#101a30] border border-white/10 overflow-hidden">
             <summary className="flex items-center gap-3 p-5 cursor-pointer list-none select-none">
-              <span className="inline-grid place-items-center w-10 h-10 rounded-xl bg-amber-500/15 text-amber-400 text-lg">🔧</span>
+              <span className="inline-grid place-items-center w-10 h-10 rounded-xl bg-pink-500/15 text-pink-400 text-lg">🎨</span>
               <div className="flex-1">
-                <h3 className="font-extrabold">المواصفات العامة</h3>
-                <p className="text-[11px] text-white/40">{specs.length > 0 ? `${specs.length} مواصفات` : "مشتركة بين كل المقاسات"}</p>
-              </div>
-              <span className="text-white/30 group-open:rotate-180 transition-transform">▼</span>
-            </summary>
-            <div className="px-5 pb-5 space-y-4">
-              <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
-                <input className={inputCls} placeholder="الخاصية" value={specKey} onChange={(e) => setSpecKey(e.target.value)} />
-                <input className={inputCls} placeholder="القيمة" value={specVal} onChange={(e) => setSpecVal(e.target.value)} />
-                <button onClick={() => { if (specKey.trim() && specVal.trim()) { setSpecs([...specs, { k: specKey.trim(), v: specVal.trim() }]); setSpecKey(""); setSpecVal(""); } }} className="shrink-0 w-11 rounded-xl bg-orange-500 hover:bg-orange-400 font-black text-lg transition">＋</button>
-              </div>
-              {specs.length > 0 && (
-                <div className="rounded-xl border border-white/10 overflow-hidden">
-                  {specs.map((s, i) => {
-                    if (editingSpecIdx === i) {
-                      return (
-                        <div key={i} className="p-3 border-b border-white/5 bg-orange-500/5 space-y-2">
-                          <div className="grid grid-cols-2 gap-2">
-                            <input className={inputCls} value={editSpecKey} onChange={(e) => setEditSpecKey(e.target.value)} placeholder="الخاصية" autoFocus />
-                            <input className={inputCls} value={editSpecVal} onChange={(e) => setEditSpecVal(e.target.value)} placeholder="القيمة" onKeyDown={(e) => { if (e.key === "Enter") saveSpecEdit(); if (e.key === "Escape") cancelSpecEdit(); }} />
-                          </div>
-                          <div className="flex gap-2 justify-end">
-                            <button onClick={cancelSpecEdit} className="border border-white/15 hover:bg-white/5 rounded-lg px-4 py-1.5 text-xs font-bold transition">إلغاء</button>
-                            <button onClick={saveSpecEdit} className="bg-green-500/20 border border-green-500/40 text-green-300 rounded-lg px-4 py-1.5 text-xs font-bold transition hover:bg-green-500/30">💾 حفظ</button>
-                          </div>
-                        </div>
-                      );
-                    }
-                    return (
-                      <div key={i} className="flex items-center justify-between px-4 py-2.5 border-b border-white/5 last:border-0 bg-white/[0.02] group/row">
-                        <p className="text-xs text-white/70"><span className="font-bold text-white/90">{s.k}:</span> {s.v}</p>
-                        <div className="flex gap-1.5 opacity-0 group-hover/row:opacity-100 transition-opacity">
-                          <button onClick={() => { setEditingSpecIdx(i); setEditSpecKey(s.k); setEditSpecVal(s.v); }} className="w-7 h-7 grid place-items-center rounded-lg bg-blue-500/15 border border-blue-500/30 text-blue-400 hover:bg-blue-500/25 text-xs transition">✏️</button>
-                          <button onClick={() => setSpecs(specs.filter((_, j) => j !== i))} className="w-7 h-7 grid place-items-center rounded-lg bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500/25 text-xs transition">✕</button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-              <p className="text-[11px] text-white/30">💡 مرر على أي سطر → ✏️ تعديل — المواصفات الخاصة بالمقاسات تكون في قسم المقاسات</p>
-            </div>
-          </details>
-
-          {/* ─── الوصف والمميزات ─── */}
-          <details className="form-section rounded-3xl bg-[#101a30] border border-white/10 overflow-hidden">
-            <summary className="flex items-center gap-3 p-5 cursor-pointer list-none select-none">
-              <span className="inline-grid place-items-center w-10 h-10 rounded-xl bg-blue-500/15 text-blue-400 text-lg">📝</span>
-              <div className="flex-1">
-                <h3 className="font-extrabold">الوصف والمميزات</h3>
-                <p className="text-[11px] text-white/40">لماذا يشتري العميل منك؟</p>
+                <h3 className="font-extrabold">الألوان المتاحة</h3>
+                <p className="text-[11px] text-white/40">{colors.length > 0 ? `${colors.length} ألوان` : "ألوان يختار منها العميل"}</p>
               </div>
               <span className="text-white/30 group-open:rotate-180 transition-transform">▼</span>
             </summary>
             <div className="px-5 pb-5 space-y-4">
               <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <label className={labelCls}>📄 الوصف</label>
-                <textarea className={inputCls + " min-h-24 resize-none"} placeholder="وصف مختصر وجاذب..." value={description} onChange={(e) => setDescription(e.target.value)} />
-              </div>
-              <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <label className={labelCls}>✅ المميزات</label>
                 <div className="flex gap-2">
-                  <input className={inputCls} placeholder="ميزة واحدة ثم Enter" value={featureInput} onChange={(e) => setFeatureInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && featureInput.trim()) { e.preventDefault(); setFeatures([...features, featureInput.trim()]); setFeatureInput(""); } }} />
-                  <button onClick={() => { if (featureInput.trim()) { setFeatures([...features, featureInput.trim()]); setFeatureInput(""); } }} className="shrink-0 w-11 rounded-xl bg-orange-500 hover:bg-orange-400 font-black text-lg transition">＋</button>
+                  <input className={inputCls} placeholder="مثال: فضي — Enter" value={colorInput} onChange={(e) => setColorInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && colorInput.trim()) { e.preventDefault(); if (!colors.includes(colorInput.trim())) setColors([...colors, colorInput.trim()]); setColorInput(""); } }} />
+                  <button onClick={() => { if (colorInput.trim() && !colors.includes(colorInput.trim())) { setColors([...colors, colorInput.trim()]); setColorInput(""); } }} className="shrink-0 w-11 rounded-xl bg-orange-500 hover:bg-orange-400 font-black text-lg transition">＋</button>
                 </div>
-                {features.length > 0 && (
+                {colors.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-3">
-                    {features.map((f, i) => (
-                      <span key={f + i} className="inline-flex items-center gap-1.5 text-xs font-bold bg-orange-500/10 border border-orange-500/30 text-orange-300 rounded-full px-3 py-1.5">
-                        ✓ {f}
-                        <button onClick={() => setFeatures(features.filter((_, j) => j !== i))} className="text-red-400 hover:text-red-300 font-black">✕</button>
+                    {colors.map((c, i) => (
+                      <span key={c + i} className="inline-flex items-center gap-1.5 text-xs font-bold bg-pink-500/10 border border-pink-500/30 text-pink-300 rounded-full px-3 py-1.5">
+                        🎨 {c}
+                        <button onClick={() => setColors(colors.filter((_, j) => j !== i))} className="text-red-400 hover:text-red-300 font-black">✕</button>
                       </span>
                     ))}
                   </div>
