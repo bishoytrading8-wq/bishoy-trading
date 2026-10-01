@@ -9,9 +9,16 @@ import { exportCSV } from "../lib/export-csv";
 import { compressImage } from "../lib/imageTools";
 
 const inputCls = "w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-sm placeholder-white/40 outline-none focus:border-orange-500/70 transition";
+const miniInputCls = "w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm placeholder-white/30 outline-none focus:border-orange-500/70 transition";
 const labelCls = "text-xs font-extrabold text-white/70 mb-1.5 block";
+const miniLabelCls = "text-[10px] font-bold text-white/50 mb-1 block";
 
 type Spec = { k: string; v: string };
+type DiscSource = "pct" | "amt" | null;
+type SizePrice = { size: string; price: string; pct: string; amt: string; src: DiscSource };
+type DbSizePrice = { size: string; price: number; discount_percent?: number | null; discount_amount?: number | null };
+
+const emptySP = (s: string): SizePrice => ({ size: s, price: "", pct: "", amt: "", src: null });
 
 const DRAFT_KEY = "bishoy-product-draft";
 
@@ -26,7 +33,7 @@ export default function AdminPage() {
   const [price, setPrice] = useState("");
   const [discountPercent, setDiscountPercent] = useState("");
   const [discountAmount, setDiscountAmount] = useState("");
-  const [discountSource, setDiscountSource] = useState<"pct" | "amt" | null>(null);
+  const [discountSource, setDiscountSource] = useState<DiscSource>(null);
   const [discountFrom, setDiscountFrom] = useState("");
   const [discountTo, setDiscountTo] = useState("");
   const [description, setDescription] = useState("");
@@ -37,7 +44,7 @@ export default function AdminPage() {
   const [images, setImages] = useState<string[]>([]);
   const [sizes, setSizes] = useState<string[]>([]);
   const [sizeInput, setSizeInput] = useState("");
-  const [sizePrices, setSizePrices] = useState<{ size: string; price: string }[]>([]);
+  const [sizePrices, setSizePrices] = useState<SizePrice[]>([]);
   const [sizeSpecs, setSizeSpecs] = useState<{ size: string; specs: Spec[] }[]>([]);
   const [sizeSpecsOpen, setSizeSpecsOpen] = useState<string | null>(null);
   const [tmpSpecK, setTmpSpecK] = useState("");
@@ -75,22 +82,69 @@ export default function AdminPage() {
   const round2 = (n: number) => Math.round(n * 100) / 100;
   const cleanNum = (v: string) => v.replace(/[^\d.]/g, "").replace(/(\..*)\./g, "$1");
 
+  // 🧮 حسبة الخصم لأي سعر (مقاس أو منتج واحد)
+  const calcDisc = (base: number, r: { pct: string; amt: string; src: DiscSource }) => {
+    let value = 0;
+    if (base > 0) {
+      if (r.src === "pct") value = round2((base * (Number(r.pct) || 0)) / 100);
+      else if (r.src === "amt") value = round2(Number(r.amt) || 0);
+      if (value >= base) value = round2(Math.max(base - 1, 0));
+    }
+    const pctN = value > 0 ? round2((value / base) * 100) : 0;
+    const final = value > 0 ? round2(base - value) : base;
+    return { value, pctN, final };
+  };
+
+  // 📏 أسعار المقاسات
+  const getSP = (s: string): SizePrice => sizePrices.find((x) => x.size === s) ?? emptySP(s);
+
+  const setSP = (s: string, patch: Partial<SizePrice>) => {
+    setSizePrices((prev) =>
+      prev.some((x) => x.size === s)
+        ? prev.map((x) => (x.size === s ? { ...x, ...patch } : x))
+        : [...prev, { ...emptySP(s), ...patch }]
+    );
+  };
+
+  const addSize = () => {
+    const v = sizeInput.trim();
+    if (!v || sizes.includes(v)) return;
+    setSizes([...sizes, v]);
+    setSizePrices((prev) => (prev.some((x) => x.size === v) ? prev : [...prev, emptySP(v)]));
+    setSizeInput("");
+  };
+
+  const removeSize = (s: string) => {
+    setSizes(sizes.filter((x) => x !== s));
+    setSizePrices(sizePrices.filter((x) => x.size !== s));
+    setSizeSpecs(sizeSpecs.filter((x) => x.size !== s));
+    if (sizeSpecsOpen === s) setSizeSpecsOpen(null);
+  };
+
+  const onSizePrice = (s: string, val: string) => setSP(s, { price: cleanNum(val) });
+
+  const onSizePct = (s: string, val: string) => {
+    let clean = cleanNum(val);
+    if (Number(clean) > 99) clean = "99";
+    setSP(s, { pct: clean, amt: "", src: clean ? "pct" : null });
+  };
+
+  const onSizeAmt = (s: string, val: string) => {
+    let clean = cleanNum(val);
+    const base = Number(getSP(s).price) || 0;
+    if (base > 0 && Number(clean) >= base) clean = String(Math.max(base - 1, 0));
+    setSP(s, { amt: clean, pct: "", src: clean ? "amt" : null });
+  };
+
+  // 💰 المنتج الواحد (بدون مقاسات)
   const basePriceN = Number(price) || 0;
-  const rawPct = Number(discountPercent) || 0;
-  const rawAmt = Number(discountAmount) || 0;
-
-  // قيمة الخصم بالجنيه — بتتحسب من الحقل اللي اتكتب فيه
-  const discountValueN =
-    basePriceN <= 0 ? 0
-    : discountSource === "pct" ? round2((basePriceN * rawPct) / 100)
-    : discountSource === "amt" ? round2(rawAmt)
-    : 0;
-
+  const single = calcDisc(basePriceN, { pct: discountPercent, amt: discountAmount, src: discountSource });
+  const discountValueN = single.value;
   const hasAnyDiscount = discountValueN > 0;
-  const discountPctN = hasAnyDiscount ? round2((discountValueN / basePriceN) * 100) : 0;
-  const discountedFinal = hasAnyDiscount ? round2(Math.max(basePriceN - discountValueN, 0)) : null;
+  const discountPctN = single.pctN;
+  const discountedFinal = hasAnyDiscount ? single.final : null;
 
-  // 🔒 الخصم الذكي — الحقل اللي اتكتب فيه حر، والتاني محسوب ومقفول
+  // 🔒 الحقل اللي اتكتب فيه حر، والتاني محسوب ومقفول
   const pctFilled = discountSource === "pct";
   const amtFilled = discountSource === "amt";
   const percentShown = amtFilled ? (hasAnyDiscount ? String(discountPctN) : "") : discountPercent;
@@ -111,6 +165,12 @@ export default function AdminPage() {
     setDiscountPercent("");
     setDiscountSource(clean ? "amt" : null);
   };
+
+  const anySizeDiscount = sizes.some((s) => {
+    const r = getSP(s);
+    return calcDisc(Number(r.price) || 0, r).value > 0;
+  });
+  const anyDiscountActive = sizes.length > 0 ? anySizeDiscount : hasAnyDiscount;
 
   // 🔧 مواصفات المقاسات — كل مقاس مواصفاته الخاصة
   const specsForSize = (s: string) => sizeSpecs.find((x) => x.size === s)?.specs ?? [];
@@ -149,9 +209,10 @@ export default function AdminPage() {
   };
 
   // 📊 مؤشر إكمال
+  const hasPrice = sizes.length > 0 ? sizes.every((s) => Number(getSP(s).price) > 0) : price.trim() !== "";
   const completionPct = Math.round(
     ((name.trim() ? 1 : 0) +
-      (price.trim() ? 1 : 0) +
+      (hasPrice ? 1 : 0) +
       (categorySlug ? 1 : 0) +
       (description.trim() ? 1 : 0) +
       (features.length ? 1 : 0) +
@@ -159,6 +220,31 @@ export default function AdminPage() {
       ((sizes.length || colors.length) ? 1 : 0) +
       (brandId ? 1 : 0)) / 8 * 100
   );
+
+  // 📋 السعر اللي يظهر في قائمة المنتجات
+  const listPrice = (p: DbProduct) => {
+    const sps = (p.size_prices ?? []) as DbSizePrice[];
+    if (sps.length === 0) {
+      const { final, hasDiscount } = priceInfo(p);
+      return { final, original: p.price, hasDiscount, anyDiscount: hasDiscount, fromLabel: false, pct: p.discount_percent ?? null };
+    }
+    const rows = sps.map((sp) => {
+      const f = sp.discount_amount ? round2(sp.price - sp.discount_amount)
+        : sp.discount_percent ? round2(sp.price * (1 - sp.discount_percent / 100))
+        : sp.price;
+      return { price: sp.price, final: f, pct: sp.discount_percent ?? null };
+    });
+    const cheapest = rows.reduce((a, b) => (b.final < a.final ? b : a));
+    const maxPct = Math.max(...rows.map((r) => r.pct ?? 0));
+    return {
+      final: cheapest.final,
+      original: cheapest.price,
+      hasDiscount: cheapest.final < cheapest.price,
+      anyDiscount: rows.some((r) => r.final < r.price),
+      fromLabel: rows.length > 1,
+      pct: maxPct > 0 ? maxPct : null,
+    };
+  };
 
   const loadBrands = useCallback(async () => {
     setBrands(await getBrands());
@@ -217,7 +303,15 @@ export default function AdminPage() {
       setDiscountFrom(p.discountFrom ?? ""); setDiscountTo(p.discountTo ?? "");
       setDescription(p.description ?? ""); setFeatures(p.features ?? []); setBrandId(p.brandId ?? "");
       setCategorySlug(p.categorySlug ?? ""); setImages(p.images ?? []);
-      setSizes(p.sizes ?? []); setSizePrices(p.sizePrices ?? []); setSizeSpecs(p.sizeSpecs ?? []);
+      const restoredSizes: string[] = p.sizes ?? [];
+      setSizes(restoredSizes);
+      setSizePrices(
+        restoredSizes.map((s) => {
+          const f: Partial<SizePrice> | undefined = (p.sizePrices ?? []).find((x: Partial<SizePrice>) => x.size === s);
+          return { size: s, price: f?.price ?? "", pct: f?.pct ?? "", amt: f?.amt ?? "", src: f?.src ?? null };
+        })
+      );
+      setSizeSpecs(p.sizeSpecs ?? []);
       setColors(p.colors ?? []);
       setSku(p.sku ?? ""); setStockStatus(p.stockStatus ?? "available"); setStockQty(p.stockQty ?? "");
       setSpecs(p.specs ?? []);
@@ -283,8 +377,17 @@ export default function AdminPage() {
   const saveProduct = async (asDraft: boolean, silent = false): Promise<string | null> => {
     if (!silent) setMsg("");
     if (!name.trim()) { if (!silent) setMsg("✍️ اكتب اسم المنتج"); return null; }
-    const priceN = Number(price);
-    if (!priceN || priceN <= 0) { if (!silent) setMsg("💰 اكتب سعر صحيح"); return null; }
+
+    let priceN = 0;
+    if (sizes.length > 0) {
+      const basePrices = sizes.map((s) => Number(getSP(s).price) || 0);
+      if (basePrices.some((b) => b <= 0)) { if (!silent) setMsg("💰 اكتب سعر لكل مقاس"); return null; }
+      priceN = Math.min(...basePrices); // أرخص مقاس = "يبدأ من"
+    } else {
+      priceN = Number(price);
+      if (!priceN || priceN <= 0) { if (!silent) setMsg("💰 اكتب سعر صحيح"); return null; }
+    }
+
     if (!categorySlug) { if (!silent) setMsg("🗂️ اختر القسم"); return null; }
 
     if (discountFrom && discountTo && discountTo < discountFrom) {
@@ -292,8 +395,9 @@ export default function AdminPage() {
       return null;
     }
 
-    const pct = hasAnyDiscount ? discountPctN : null;
-    const amt = hasAnyDiscount ? discountValueN : null; // قيمة الخصم بالجنيه، مش السعر النهائي
+    // الخصم على مستوى المنتج للمنتج الواحد فقط — المقاسات لكل مقاس خصمه جواها
+    const pct = sizes.length === 0 && hasAnyDiscount ? discountPctN : null;
+    const amt = sizes.length === 0 && hasAnyDiscount ? discountValueN : null; // قيمة الخصم بالجنيه، مش السعر النهائي
 
     setBusy(true);
     const payload = {
@@ -310,7 +414,17 @@ export default function AdminPage() {
       category_slug: categorySlug,
       images,
       sizes: sizes.length ? sizes : null,
-      size_prices: sizePrices.filter((sp) => sp.price.trim()).map((sp) => ({ size: sp.size, price: Number(sp.price) })),
+      size_prices: sizes.map((s) => {
+        const r = getSP(s);
+        const base = Number(r.price) || 0;
+        const d = calcDisc(base, r);
+        return {
+          size: s,
+          price: base,
+          discount_percent: d.value > 0 ? d.pctN : null,
+          discount_amount: d.value > 0 ? d.value : null,
+        };
+      }),
       size_specs: sizeSpecs.filter((x) => x.specs.length).map((x) => ({ size: x.size, specs: x.specs })),
       colors: colors.length ? colors : null,
       sku: sku.trim() || null,
@@ -391,9 +505,21 @@ export default function AdminPage() {
     setBrandId(p.brand_id ?? "");
     setCategorySlug(p.category_slug);
     setImages(p.images ?? []);
-    setSizes(p.sizes ?? []);
+    const pSizes = p.sizes ?? [];
+    setSizes(pSizes);
     setSizeInput("");
-    setSizePrices((p.size_prices ?? []).map((sp) => ({ size: sp.size, price: String(sp.price) })));
+    const dbSps = (p.size_prices ?? []) as DbSizePrice[];
+    setSizePrices(
+      pSizes.map((s) => {
+        const f = dbSps.find((x) => x.size === s);
+        const row = emptySP(s);
+        row.price = String(f ? f.price : p.price); // المقاس القديم بدون سعر ياخد السعر الأساسي
+        if (f && f.discount_amount != null) { row.amt = String(f.discount_amount); row.src = "amt"; }
+        else if (f && f.discount_percent != null) { row.pct = String(f.discount_percent); row.src = "pct"; }
+        else if (p.discount_percent != null) { row.pct = String(p.discount_percent); row.src = "pct"; } // منتج قديم خصمه على مستوى المنتج
+        return row;
+      })
+    );
     setSizeSpecs(p.size_specs ?? []);
     setSizeSpecsOpen(null);
     setColors(p.colors ?? []);
@@ -443,7 +569,20 @@ export default function AdminPage() {
     const pct = Number(bulkPct);
     if (!pct || pct <= 0 || pct > 100 || selected.length === 0) return;
     if (!confirm(`تطبيق خصم ${pct}% على ${selected.length} منتج؟`)) return;
-    await supabase.from("products").update({ discount_percent: pct, discount_amount: null }).in("id", selected);
+    const targets = items.filter((p) => selected.includes(p.id));
+    await Promise.all(
+      targets.map((p) => {
+        const sps = (p.size_prices ?? []) as DbSizePrice[];
+        if (sps.length > 0) {
+          return supabase.from("products").update({
+            size_prices: sps.map((sp) => ({ ...sp, discount_percent: pct, discount_amount: round2((sp.price * pct) / 100) })),
+            discount_percent: null,
+            discount_amount: null,
+          }).eq("id", p.id);
+        }
+        return supabase.from("products").update({ discount_percent: pct, discount_amount: null }).eq("id", p.id);
+      })
+    );
     setMsg(`✓ تم تطبيق خصم ${pct}% على ${selected.length} منتج`);
     setSelected([]); setBulkPct("");
     loadItems();
@@ -451,7 +590,17 @@ export default function AdminPage() {
 
   const bulkRemoveDiscount = async () => {
     if (selected.length === 0) return;
-    await supabase.from("products").update({ discount_percent: null, discount_amount: null }).in("id", selected);
+    const targets = items.filter((p) => selected.includes(p.id));
+    await Promise.all(
+      targets.map((p) => {
+        const sps = (p.size_prices ?? []) as DbSizePrice[];
+        return supabase.from("products").update({
+          size_prices: sps.map((sp) => ({ ...sp, discount_percent: null, discount_amount: null })),
+          discount_percent: null,
+          discount_amount: null,
+        }).eq("id", p.id);
+      })
+    );
     setMsg(`✓ تم إزالة الخصم من ${selected.length} منتج`);
     setSelected([]);
     loadItems();
@@ -478,13 +627,21 @@ export default function AdminPage() {
     exportCSV("products.csv",
       ["الاسم","القسم","الماركة","السعر الأساسي","الخصم %","السعر النهائي","المقاسات بأسعارها","مواصفات المقاسات","الألوان","SKU","المخزون","المواصفات العامة","الوصف","مميزات","حالة"],
       items.map((p) => {
-        const { final, hasDiscount } = priceInfo(p);
+        const lp = listPrice(p);
         const cat = cats.find((c) => c.slug === p.category_slug);
+        const sps = (p.size_prices ?? []) as DbSizePrice[];
         return [
           p.name, cat?.name ?? p.category_slug, p.brand?.name ?? "", p.price,
-          p.discount_percent ?? "", hasDiscount ? final : "",
-          (p.size_prices ?? []).length > 0
-            ? (p.size_prices ?? []).map((sp) => `${sp.size}: ${sp.price} ج.م`).join(" | ")
+          lp.pct ?? "", lp.hasDiscount ? lp.final : "",
+          sps.length > 0
+            ? sps.map((sp) => {
+                const f = sp.discount_amount ? round2(sp.price - sp.discount_amount)
+                  : sp.discount_percent ? round2(sp.price * (1 - sp.discount_percent / 100))
+                  : sp.price;
+                return f < sp.price
+                  ? `${sp.size}: ${sp.price} ج.م ← ${f} ج.م (خصم ${sp.discount_percent ?? ""}%)`
+                  : `${sp.size}: ${sp.price} ج.م`;
+              }).join(" | ")
             : "سعر موحد",
           (p.size_specs ?? []).map((ss) => `${ss.size} [${ss.specs.map((sp) => `${sp.k}=${sp.v}`).join(", ")}]`).join(" | "),
           (p.colors ?? []).join(" | "),
@@ -584,7 +741,7 @@ export default function AdminPage() {
               <span className="inline-grid place-items-center w-10 h-10 rounded-xl bg-orange-500/15 text-orange-400 text-lg">📦</span>
               <div className="flex-1">
                 <h3 className="font-extrabold">الأساسيات</h3>
-                <p className="text-[11px] text-white/40">الاسم والسعر الأساسي والقسم</p>
+                <p className="text-[11px] text-white/40">الاسم والقسم — والسعر في القسم اللي تحت</p>
               </div>
               <span className="text-white/30 group-open:rotate-180 transition-transform">▼</span>
             </summary>
@@ -593,107 +750,95 @@ export default function AdminPage() {
                 <label className={labelCls}>📦 اسم المنتج</label>
                 <input className={inputCls} placeholder="مثال: بلاور هواء LUFTBERG" value={name} onChange={(e) => setName(e.target.value)} />
               </div>
-              <div className="grid sm:grid-cols-2 gap-3">
-                <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                  <label className={labelCls}>💰 السعر الأساسي (ج.م)</label>
-                  <input className={inputCls} inputMode="numeric" placeholder="1650" value={price} onChange={(e) => setPrice(e.target.value.replace(/[^\d.]/g, ""))} />
-                </div>
-                <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                  <label className={labelCls}>🗂️ القسم</label>
-                  <select className={inputCls} value={categorySlug} onChange={(e) => setCategorySlug(e.target.value)}>
-                    {cats.map((c) => <option key={c.slug} value={c.slug} className="bg-[#101a30]">{c.emoji} {c.name}</option>)}
-                  </select>
-                </div>
+              <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <label className={labelCls}>🗂️ القسم</label>
+                <select className={inputCls} value={categorySlug} onChange={(e) => setCategorySlug(e.target.value)}>
+                  {cats.map((c) => <option key={c.slug} value={c.slug} className="bg-[#101a30]">{c.emoji} {c.name}</option>)}
+                </select>
               </div>
             </div>
           </details>
 
-          {/* ─── 🔥 الخصم الذكي — المحسوب مقفول ─── */}
+          {/* ─── 💰 الأسعار والمقاسات والخصم — كله في مكان واحد ─── */}
           <details open className="form-section rounded-3xl bg-[#101a30] border border-white/10 overflow-hidden">
             <summary className="flex items-center gap-3 p-5 cursor-pointer list-none select-none">
-              <span className="inline-grid place-items-center w-10 h-10 rounded-xl bg-red-500/15 text-red-400 text-lg">🔥</span>
+              <span className="inline-grid place-items-center w-10 h-10 rounded-xl bg-violet-500/15 text-violet-400 text-lg">💰</span>
               <div className="flex-1">
-                <h3 className="font-extrabold">عرض وخصم</h3>
-                <p className="text-[11px] text-white/40">{hasAnyDiscount ? "🔥 خصم نشط — الحقل المحسوب مقفول تلقائيًا" : "اكتب النسبة أو المبلغ — والآخر يُحسب مقفولًا"}</p>
-              </div>
-              <span className="text-white/30 group-open:rotate-180 transition-transform">▼</span>
-            </summary>
-            <div className="px-5 pb-5 space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                {/* النسبة — مقفولة لو المبلغ هو اللي اتكتب */}
-                <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                  <label className={labelCls}>
-                    نسبة الخصم %
-                    {amtFilled && <span className="text-[10px] text-orange-400 font-black mr-1">🔒 محسوبة تلقائيًا</span>}
-                  </label>
-                  <input
-                    className={inputCls}
-                    inputMode="decimal"
-                    placeholder="10"
-                    value={percentShown}
-                    onChange={(e) => handlePercentChange(e.target.value)}
-                    readOnly={amtFilled}
-                    style={amtFilled ? { opacity: 0.7, cursor: "not-allowed" } : {}}
-                  />
-                </div>
-                {/* المبلغ — مقفول لو النسبة هي اللي اتكتبت */}
-                <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                  <label className={labelCls}>
-                    قيمة الخصم ج.م
-                    {pctFilled && <span className="text-[10px] text-orange-400 font-black mr-1">🔒 محسوب تلقائيًا</span>}
-                  </label>
-                  <input
-                    className={inputCls}
-                    inputMode="decimal"
-                    placeholder="165"
-                    value={amountShown}
-                    onChange={(e) => handleAmountChange(e.target.value)}
-                    readOnly={pctFilled}
-                    style={pctFilled ? { opacity: 0.7, cursor: "not-allowed" } : {}}
-                  />
-                </div>
-              </div>
-
-              {/* 💰 معاينة حية */}
-              {discountedFinal != null && (
-                <div className="rounded-2xl border border-green-500/30 bg-green-500/5 p-4">
-                  <p className="text-[11px] font-bold text-white/40 mb-2">👁️ هكذا سيظهر السعر للعميل:</p>
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <span className="text-xl font-bold text-red-400 line-through decoration-2">{basePriceN} ج.م</span>
-                    <span className="text-3xl font-black text-green-400">{discountedFinal} ج.م</span>
-                    <span className="text-[11px] font-black text-white bg-red-500 rounded-full px-2.5 py-1">
-                      وفّر {discountValueN} ج.م ({discountPctN}%)
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                  <label className={labelCls}>📅 يبدأ من</label>
-                  <input type="date" dir="ltr" className={inputCls} value={discountFrom} onChange={(e) => setDiscountFrom(e.target.value)} />
-                </div>
-                <div className="glow-input rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                  <label className={labelCls}>📅 ينتهي في</label>
-                  <input type="date" dir="ltr" className={inputCls} value={discountTo} onChange={(e) => setDiscountTo(e.target.value)} />
-                </div>
-              </div>
-            </div>
-          </details>
-
-          {/* ─── 📏 المقاسات — سعر + مواصفات خاصة لكل مقاس ─── */}
-          <details open className="form-section rounded-3xl bg-[#101a30] border border-white/10 overflow-hidden">
-            <summary className="flex items-center gap-3 p-5 cursor-pointer list-none select-none">
-              <span className="inline-grid place-items-center w-10 h-10 rounded-xl bg-violet-500/15 text-violet-400 text-lg">📏</span>
-              <div className="flex-1">
-                <h3 className="font-extrabold">المقاسات — سعر ومواصفات خاصة لكل مقاس</h3>
-                <p className="text-[11px] text-white/40">{sizes.length > 0 ? `${sizes.length} مقاسات` : "كل مقاس له سعره ومواصفاته الفنية الخاصة — والعميل يشوف مواصفات مقاسه بس"}</p>
+                <h3 className="font-extrabold">السعر والمقاسات والخصم</h3>
+                <p className="text-[11px] text-white/40">
+                  {sizes.length > 0
+                    ? `${sizes.length} مقاسات — لكل مقاس سعره وخصمه ومواصفاته${anyDiscountActive ? " • 🔥 فيه خصم" : ""}`
+                    : "منتج بسعر واحد، أو أضف مقاسات وكل مقاس له سعره وخصمه"}
+                </p>
               </div>
               <span className="text-white/30 group-open:rotate-180 transition-transform">▼</span>
             </summary>
             <div className="px-5 pb-5 space-y-3">
+
+              {/* ─ منتج بدون مقاسات: سعر واحد + خصم ─ */}
+              {sizes.length === 0 && (
+                <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 space-y-3">
+                  <p className="text-[11px] font-bold text-white/50">💡 المنتج ده من غير مقاسات — اكتب سعره وخصمه هنا. ولو له مقاسات اكتب المقاس تحت وكل مقاس هيبقى له سعره.</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className={miniLabelCls}>💰 السعر (ج.م)</label>
+                      <input className={miniInputCls} inputMode="decimal" placeholder="1650" value={price} onChange={(e) => setPrice(cleanNum(e.target.value))} />
+                    </div>
+                    <div>
+                      <label className={miniLabelCls}>
+                        نسبة الخصم %
+                        {amtFilled && <span className="text-orange-400 font-black mr-1">🔒</span>}
+                      </label>
+                      <input
+                        className={miniInputCls}
+                        inputMode="decimal"
+                        placeholder="10"
+                        value={percentShown}
+                        onChange={(e) => handlePercentChange(e.target.value)}
+                        readOnly={amtFilled}
+                        style={amtFilled ? { opacity: 0.7, cursor: "not-allowed" } : {}}
+                      />
+                    </div>
+                    <div>
+                      <label className={miniLabelCls}>
+                        قيمة الخصم ج.م
+                        {pctFilled && <span className="text-orange-400 font-black mr-1">🔒</span>}
+                      </label>
+                      <input
+                        className={miniInputCls}
+                        inputMode="decimal"
+                        placeholder="165"
+                        value={amountShown}
+                        onChange={(e) => handleAmountChange(e.target.value)}
+                        readOnly={pctFilled}
+                        style={pctFilled ? { opacity: 0.7, cursor: "not-allowed" } : {}}
+                      />
+                    </div>
+                  </div>
+                  {discountedFinal != null && (
+                    <div className="rounded-2xl border border-green-500/30 bg-green-500/5 p-4">
+                      <p className="text-[11px] font-bold text-white/40 mb-2">👁️ هكذا سيظهر السعر للعميل:</p>
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <span className="text-xl font-bold text-red-400 line-through decoration-2">{basePriceN} ج.م</span>
+                        <span className="text-3xl font-black text-green-400">{discountedFinal} ج.م</span>
+                        <span className="text-[11px] font-black text-white bg-red-500 rounded-full px-2.5 py-1">
+                          وفّر {discountValueN} ج.م ({discountPctN}%)
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ─ المقاسات: كل مقاس بسعره وخصمه ─ */}
               {sizes.map((s, i) => {
-                const sp = sizePrices.find((x) => x.size === s);
+                const r = getSP(s);
+                const base = Number(r.price) || 0;
+                const d = calcDisc(base, r);
+                const pctShownS = r.src === "amt" ? (d.value > 0 ? String(d.pctN) : "") : r.pct;
+                const amtShownS = r.src === "pct" ? (d.value > 0 ? String(d.value) : "") : r.amt;
+                const lockPct = r.src === "amt";
+                const lockAmt = r.src === "pct";
                 const specsOf = specsForSize(s);
                 const isOpen = sizeSpecsOpen === s;
                 return (
@@ -701,28 +846,62 @@ export default function AdminPage() {
                     <div className="flex items-center gap-2 p-3 bg-white/[0.02] flex-wrap">
                       <span className="shrink-0 inline-flex items-center gap-1 text-xs font-bold bg-violet-500/10 border border-violet-500/30 text-violet-300 rounded-full px-3 py-2">
                         📏 {s}
-                        <button onClick={() => { setSizes(sizes.filter((_, j) => j !== i)); setSizePrices(sizePrices.filter((x) => x.size !== s)); setSizeSpecs(sizeSpecs.filter((x) => x.size !== s)); }} className="text-red-400 hover:text-red-300 font-black" aria-label={`حذف ${s}`}>✕</button>
+                        <button onClick={() => removeSize(s)} className="text-red-400 hover:text-red-300 font-black" aria-label={`حذف ${s}`}>✕</button>
                       </span>
-                      <input
-                        inputMode="numeric"
-                        className="flex-1 min-w-32 rounded-lg bg-white/5 border border-white/10 px-3 py-2 text-sm outline-none focus:border-orange-500/70"
-                        placeholder="سعر هذا المقاس (فاضي = السعر الأساسي)"
-                        value={sp?.price ?? ""}
-                        onChange={(e) => {
-                          const val = e.target.value.replace(/[^\d.]/g, "");
-                          const others = sizePrices.filter((x) => x.size !== s);
-                          if (val) setSizePrices([...others, { size: s, price: val }]);
-                          else setSizePrices(others);
-                        }}
-                      />
-                      {sp?.price && <span className="shrink-0 text-xs font-bold text-orange-400">ج.م</span>}
                       <button
                         onClick={() => setSizeSpecsOpen(isOpen ? null : s)}
-                        className={`shrink-0 rounded-lg px-3 py-2 text-xs font-bold border transition ${isOpen ? "bg-amber-500/20 border-amber-500/40 text-amber-300" : specsOf.length > 0 ? "bg-amber-500/10 border-amber-500/30 text-amber-300" : "border-white/15 text-white/50 hover:bg-white/5"}`}
+                        className={`shrink-0 mr-auto rounded-lg px-3 py-2 text-xs font-bold border transition ${isOpen ? "bg-amber-500/20 border-amber-500/40 text-amber-300" : specsOf.length > 0 ? "bg-amber-500/10 border-amber-500/30 text-amber-300" : "border-white/15 text-white/50 hover:bg-white/5"}`}
                       >
                         🔧 {specsOf.length > 0 ? `مواصفات (${specsOf.length})` : "مواصفات هذا المقاس"}
                       </button>
                     </div>
+
+                    {/* 💰 السعر + الخصم لهذا المقاس */}
+                    <div className="grid grid-cols-3 gap-2 px-3 pb-3 bg-white/[0.02]">
+                      <div>
+                        <label className={miniLabelCls}>💰 السعر (ج.م)</label>
+                        <input className={miniInputCls} inputMode="decimal" placeholder="مثال: 1650" value={r.price} onChange={(e) => onSizePrice(s, e.target.value)} />
+                      </div>
+                      <div>
+                        <label className={miniLabelCls}>
+                          نسبة الخصم %
+                          {lockPct && <span className="text-orange-400 font-black mr-1">🔒</span>}
+                        </label>
+                        <input
+                          className={miniInputCls}
+                          inputMode="decimal"
+                          placeholder="10"
+                          value={pctShownS}
+                          onChange={(e) => onSizePct(s, e.target.value)}
+                          readOnly={lockPct}
+                          style={lockPct ? { opacity: 0.7, cursor: "not-allowed" } : {}}
+                        />
+                      </div>
+                      <div>
+                        <label className={miniLabelCls}>
+                          قيمة الخصم ج.م
+                          {lockAmt && <span className="text-orange-400 font-black mr-1">🔒</span>}
+                        </label>
+                        <input
+                          className={miniInputCls}
+                          inputMode="decimal"
+                          placeholder="165"
+                          value={amtShownS}
+                          onChange={(e) => onSizeAmt(s, e.target.value)}
+                          readOnly={lockAmt}
+                          style={lockAmt ? { opacity: 0.7, cursor: "not-allowed" } : {}}
+                        />
+                      </div>
+                    </div>
+
+                    {/* 👁️ معاينة سعر هذا المقاس */}
+                    {d.value > 0 && (
+                      <div className="mx-3 mb-3 rounded-xl border border-green-500/30 bg-green-500/5 px-3 py-2 flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-bold text-red-400 line-through decoration-2">{base} ج.م</span>
+                        <span className="text-lg font-black text-green-400">{d.final} ج.م</span>
+                        <span className="text-[10px] font-black text-white bg-red-500 rounded-full px-2 py-0.5">وفّر {d.value} ج.م ({d.pctN}%)</span>
+                      </div>
+                    )}
 
                     {/* 🔧 مواصفات هذا المقاس تحديدًا */}
                     {isOpen && (
@@ -764,11 +943,28 @@ export default function AdminPage() {
                   </div>
                 );
               })}
+
+              {/* ➕ إضافة مقاس */}
               <div className="flex gap-2">
-                <input className={inputCls} placeholder="اكتب مقاسًا جديدًا واضغط Enter — مثال: 8 بوصة" value={sizeInput} onChange={(e) => setSizeInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && sizeInput.trim()) { e.preventDefault(); if (!sizes.includes(sizeInput.trim())) { setSizes([...sizes, sizeInput.trim()]); setSizeInput(""); } } }} />
-                <button onClick={() => { if (sizeInput.trim() && !sizes.includes(sizeInput.trim())) { setSizes([...sizes, sizeInput.trim()]); setSizeInput(""); } }} className="shrink-0 w-11 rounded-xl bg-orange-500 hover:bg-orange-400 font-black text-lg transition">＋</button>
+                <input className={inputCls} placeholder="اكتب مقاسًا جديدًا واضغط Enter — مثال: 4 بوصة = 100 مم" value={sizeInput} onChange={(e) => setSizeInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && sizeInput.trim()) { e.preventDefault(); addSize(); } }} />
+                <button onClick={addSize} className="shrink-0 w-11 rounded-xl bg-orange-500 hover:bg-orange-400 font-black text-lg transition">＋</button>
               </div>
-              {sizes.length > 0 && <p className="text-[11px] text-white/30">💡 كل مقاس مستقل: سعره الخاص + مواصفاته الخاصة — والعميل يشوف مواصفات المقاس اللي اختاره فقط</p>}
+              {sizes.length > 0 && <p className="text-[11px] text-white/30">💡 كل مقاس مستقل: سعره + خصمه + مواصفاته — والعميل يشوف بيانات المقاس اللي اختاره فقط. والسعر اللي بيظهر "يبدأ من" هو أرخص مقاس.</p>}
+
+              {/* 📅 فترة العرض (لكل المنتج) */}
+              <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 space-y-2">
+                <p className="text-[11px] font-bold text-white/50">🔥 فترة العرض (اختياري) — بتنطبق على خصومات المنتج كله</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={miniLabelCls}>📅 يبدأ من</label>
+                    <input type="date" dir="ltr" className={miniInputCls} value={discountFrom} onChange={(e) => setDiscountFrom(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className={miniLabelCls}>📅 ينتهي في</label>
+                    <input type="date" dir="ltr" className={miniInputCls} value={discountTo} onChange={(e) => setDiscountTo(e.target.value)} />
+                  </div>
+                </div>
+              </div>
             </div>
           </details>
 
@@ -1030,7 +1226,7 @@ export default function AdminPage() {
 
         <div className="grid gap-3">
           {items.map((p) => {
-            const { final, hasDiscount } = priceInfo(p);
+            const lp = listPrice(p);
             const cat = cats.find((c) => c.slug === p.category_slug);
             const isSelected = selected.includes(p.id);
             return (
@@ -1051,7 +1247,7 @@ export default function AdminPage() {
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <p className="font-extrabold truncate">{p.name}</p>
                       {p.stock_status === "unavailable" && <span className="text-[10px] rounded-full px-2 py-0.5 bg-red-500/15 text-red-300 font-bold">🚫 غير متاح</span>}
-                      {hasDiscount && <span className="text-[10px] rounded-full px-2 py-0.5 bg-red-500/15 text-red-300 font-bold">🔥 خصم {p.discount_percent ?? ""}%</span>}
+                      {lp.anyDiscount && <span className="text-[10px] rounded-full px-2 py-0.5 bg-red-500/15 text-red-300 font-bold">🔥 خصم {lp.pct ?? ""}%</span>}
                     </div>
                     <p className="text-[11px] text-white/40 font-bold">
                       {cat?.name ?? p.category_slug} {p.brand?.name && `• 🏷️ ${p.brand.name}`}
@@ -1064,8 +1260,9 @@ export default function AdminPage() {
                       {(p.size_prices ?? []).length > 0 && <span className="text-[10px] font-bold bg-green-500/10 border border-green-500/25 text-green-300 rounded-full px-2.5 py-0.5">💰 أسعار بالمقاس</span>}
                     </div>
                     <p className="pt-0.5">
-                      {hasDiscount && <span className="text-xs font-bold text-red-400 line-through mr-1.5">{p.price} ج.م</span>}
-                      <span className="font-black text-orange-400 text-lg">{final} ج.م</span>
+                      {lp.fromLabel && <span className="text-[10px] font-bold text-white/40 mr-1.5">يبدأ من</span>}
+                      {lp.hasDiscount && <span className="text-xs font-bold text-red-400 line-through mr-1.5">{lp.original} ج.م</span>}
+                      <span className="font-black text-orange-400 text-lg">{lp.final} ج.م</span>
                     </p>
                   </div>
 

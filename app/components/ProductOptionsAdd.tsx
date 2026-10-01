@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useCart } from "./CartProvider";
-import { priceForSize, priceInfo, type DbProduct } from "../lib/catalog";
+import { priceForSize, listPrice, type DbProduct } from "../lib/catalog";
 
 export default function ProductOptionsAdd({ product }: { product: DbProduct }) {
   const { add } = useCart();
@@ -11,24 +11,18 @@ export default function ProductOptionsAdd({ product }: { product: DbProduct }) {
   const [added, setAdded] = useState(false);
 
   const sizes = product.sizes ?? [];
-  const sizePrices = product.size_prices ?? [];
   const sizeSpecs = product.size_specs ?? [];
   const colors = product.colors ?? [];
   const unavailable = product.stock_status === "unavailable";
   const needSize = sizes.length > 0 && !size;
-  const needColor = colors.length > 0 && !color;
   const blocked = unavailable || needSize;
 
-  // 💰 سعر المقاس المختار أو السعر الأساسي
-  const basePrice = Number(product.price);
-  const sizeBase = size ? (sizePrices.find((sp) => sp.size === size)?.price ?? basePrice) : basePrice;
-
-  // 🔥 الخصم على سعر المقاس المختار
-  const info = size ? priceForSize(product, size) : priceInfo(product);
+  // 💰 السعر المعروض: المقاس المختار → سعره بعد خصمه — أو "يبدأ من" الأرخص
+  const info = size ? priceForSize(product, size) : listPrice(product);
   const final = info.final;
   const hasDiscount = info.hasDiscount;
 
-  // 🔧 المواصفات: بتاعة المقاس المختار أو العامة
+  // 🔧 المواصفات: المقاس المختار → مواصفاته هو — وإلا العامة
   const selectedSizeSpecs = size ? sizeSpecs.find((x) => x.size === size)?.specs : null;
   const shownSpecs = selectedSizeSpecs && selectedSizeSpecs.length > 0
     ? selectedSizeSpecs
@@ -39,20 +33,19 @@ export default function ProductOptionsAdd({ product }: { product: DbProduct }) {
 
   return (
     <div className="space-y-4">
-      {/* 🔢 SKU */}
       {product.sku && (
         <p className="text-xs text-white/40 font-bold">
           كود المنتج: <span dir="ltr" className="text-white/60">{product.sku}</span>
         </p>
       )}
 
-      {/* 📏 المقاسات — كل مقاس سعره تحته */}
+      {/* 📏 المقاسات — كل مقاس سعره النهائي (بعد خصمه) تحته */}
       {sizes.length > 0 && (
         <div>
           <p className="text-xs font-extrabold text-white/70 mb-2">📏 المقاسات المتاحة — اختر مقاسك:</p>
           <div className="flex flex-wrap gap-2">
             {sizes.map((s) => {
-              const sp = sizePrices.find((x) => x.size === s)?.price;
+              const pInfo = priceForSize(product, s);
               const isSelected = size === s;
               return (
                 <button
@@ -65,11 +58,9 @@ export default function ProductOptionsAdd({ product }: { product: DbProduct }) {
                   }`}
                 >
                   <span className="block text-sm font-bold">📏 {s}</span>
-                  {sp != null && (
-                    <span className={`block text-[11px] font-black ${isSelected ? "text-white" : "text-orange-400"}`}>
-                      {sp} ج.م
-                    </span>
-                  )}
+                  <span className={`block text-[11px] font-black ${isSelected ? "text-white" : "text-orange-400"}`}>
+                    {pInfo.hasDiscount ? `${pInfo.final} ج.م 🔥` : `${pInfo.final} ج.م`}
+                  </span>
                 </button>
               );
             })}
@@ -100,35 +91,23 @@ export default function ProductOptionsAdd({ product }: { product: DbProduct }) {
         </div>
       )}
 
-      {/* 💰 صندوق السعر — مغطي بلور قبل المقاس، وبعد الاختيار: القديم مشطوب + الجديد بعد الخصم */}
-      <div className="relative rounded-2xl border border-green-500/30 bg-gradient-to-l from-green-500/15 to-transparent p-5 overflow-hidden">
-
-        {/* 🌫️ البلور — قبل اختيار المقاس فقط */}
-        {needSize && (
-          <div className="absolute inset-0 backdrop-blur-md bg-[#0b1220]/50 z-10 grid place-items-center">
-            <span className="inline-block rounded-full bg-orange-500 text-white px-5 py-2.5 text-sm font-black shadow-lg shadow-orange-500/40">
-              📏 اختر المقاس لعرض السعر
-            </span>
-          </div>
-        )}
-
-        {/* المحتوى وراء البلور */}
-        <div className={needSize ? "blur-[2px] select-none" : ""}>
-          <p className="text-xs text-white/50 font-bold">
-            {hasDiscount ? "السعر بعد الخصم 🔥" : size ? `سعر المقاس (${size})` : "السعر"}
-          </p>
-          <div className="flex items-center gap-3 mt-1 flex-wrap">
-            {hasDiscount && (
-              <span className="text-2xl font-bold text-red-400 line-through decoration-2">{sizeBase} ج.م</span>
-            )}
-            <span className="text-4xl font-black text-green-400">
-              {final} <span className="text-lg">ج.م</span>
-            </span>
-          </div>
+      {/* 💰 صندوق السعر */}
+      <div className="rounded-2xl border border-green-500/30 bg-gradient-to-l from-green-500/15 to-transparent p-5">
+        <p className="text-xs text-white/50 font-bold">
+          {hasDiscount ? "السعر بعد الخصم 🔥" : sizes.length > 1 && !size ? "يبدأ السعر من" : "السعر"}
+        </p>
+        <div className="flex items-center gap-3 mt-1 flex-wrap">
           {hasDiscount && (
-            <p className="text-xs text-white/40 mt-1">وفّر {sizeBase - final} ج.م مع العرض الحالي</p>
+            <span className="text-2xl font-bold text-red-400 line-through decoration-2">{info.base} ج.م</span>
+          )}
+          <span className="text-4xl font-black text-green-400">
+            {final} <span className="text-lg">ج.م</span>
+          </span>
+          {info.percentOff > 0 && (
+            <span className="text-[11px] font-black text-white bg-red-500 rounded-full px-2.5 py-1">خصم {info.percentOff}%</span>
           )}
         </div>
+        {sizes.length > 1 && !size && <p className="text-[11px] text-white/40 mt-1">اختر مقاسًا لعرض سعره النهائي</p>}
       </div>
 
       {/* 🛒 زر الإضافة */}
@@ -158,7 +137,7 @@ export default function ProductOptionsAdd({ product }: { product: DbProduct }) {
           : "🛒 أضف للطلب"}
       </button>
 
-      {/* 🔧 المواصفات — قايمة منسدلة أنيقة */}
+      {/* 🔧 المواصفات — قايمة منسدلة أنيقة بتاعة المقاس المختار */}
       {shownSpecs.length > 0 && (
         <details className="rounded-2xl border border-white/10 overflow-hidden group">
           <summary className="flex items-center justify-between gap-2 px-5 py-3.5 cursor-pointer list-none select-none hover:bg-white/5 transition">

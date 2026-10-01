@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import type { DbProduct } from "../lib/catalog";
-import { priceInfo } from "../lib/catalog";
-import PriceGate from "./PriceGate";
+import { listPrice } from "../lib/catalog";
 import AddToCartButton from "./AddToCartButton";
 
 function smallImg(url: string, width = 500) {
@@ -14,7 +13,7 @@ function smallImg(url: string, width = 500) {
 }
 
 export default function DbProductCard({ product }: { product: DbProduct }) {
-  const { base, final, hasDiscount, percentOff } = priceInfo(product);
+  const { base, final, hasDiscount, percentOff, fromLabel } = listPrice(product);
   const img = product.images?.[0];
   const unavailable = product.stock_status === "unavailable";
   const sizes = product.sizes ?? [];
@@ -65,7 +64,13 @@ export default function DbProductCard({ product }: { product: DbProduct }) {
         {product.description && <p className="text-xs text-white/50 line-clamp-2 leading-relaxed flex-1">{product.description}</p>}
 
         <div className="flex items-end justify-between pt-1">
-          <PriceGate price={final} base={base} compact />
+          <div>
+            {fromLabel && <span className="block text-[10px] font-bold text-white/40">يبدأ من</span>}
+            <span className="flex items-center gap-1.5">
+              {hasDiscount && <span className="text-[11px] font-bold text-red-400 line-through decoration-2">{base}</span>}
+              <p className="text-orange-400 font-extrabold">{final} ج.م</p>
+            </span>
+          </div>
           <span className="text-[11px] text-white/30 group-hover:text-orange-400 transition font-bold">التفاصيل ←</span>
         </div>
         <AddToCartButton item={{ id: product.id, name: product.name, price: final, emoji: product.emoji ?? "📦", image: product.images?.[0] }} />

@@ -5,6 +5,13 @@ export interface DbBrand {
   name: string;
 }
 
+export interface DbSizePrice {
+  size: string;
+  price: number;
+  discount_percent?: number | null;
+  discount_amount?: number | null;
+}
+
 export interface DbProduct {
   id: string;
   name: string;
@@ -21,7 +28,7 @@ export interface DbProduct {
   category_slug: string;
   images: string[];
   sizes: string[] | null;
-  size_prices: { size: string; price: number }[] | null;
+  size_prices: DbSizePrice[] | null;
   size_specs: { size: string; specs: { k: string; v: string }[] }[] | null;
   colors: string[] | null;
   sku: string | null;
@@ -45,30 +52,66 @@ export interface DbCategory {
 
 const SELECT = "*, brand:brands(id, name), sizes, colors, size_prices, size_specs, sku, stock_status, stock_qty, specs, is_draft";
 
-// 💰 حساب السعر النهائي للمنتج (بدون مقاس)
-export function priceInfo(p: DbProduct) {
+// ⏳ هل فترة العرض نشطة؟ (تواريخ مستوى المنتج — بتنطبق على المقاسات كمان)
+export function discountPeriodActive(p: Pick<DbProduct, "discount_from" | "discount_to">): boolean {
   const today = new Date().toISOString().slice(0, 10);
-  const active =
-    (p.discount_percent != null || p.discount_amount != null) &&
-    (!p.discount_from || p.discount_from <= today) &&
-    (!p.discount_to || p.discount_to >= today);
+  if (p.discount_from && p.discount_from > today) return false;
+  if (p.discount_to && p.discount_to < today) return false;
+  return true;
+}
 
+// 💰 تطبيق خصم على سعر أساسي — بيرجع النهائي وهل فيه خصم
+function applyDiscount(base: number, pct: number | null | undefined, amt: number | null | undefined) {
+  if (base <= 0) return { final: base, hasDiscount: false, percentOff: 0 };
+  const byPct = pct != null && pct > 0 ? base * (1 - pct / 100) : Infinity;
+  const byAmt = amt != null && amt > 0 ? base - amt : Infinity;
+  const final = Math.max(0, Math.round(Math.min(byPct, byAmt)));
+  const hasDiscount = final < base;
+  const percentOff = hasDiscount && base > 0 ? Math.round(((base - final) / base) * 100) : 0;
+  return { final, hasDiscount, percentOff };
+}
+
+// 💰 سعر منتج بدون مقاسات — سعر واحد + خصمه
+export function priceInfo(p: DbProduct) {
   const base = Number(p.price);
+  const active = discountPeriodActive(p) && (p.discount_percent != null || p.discount_amount != null);
   if (!active) return { base, final: base, hasDiscount: false, percentOff: 0 };
-
-  const byPercent = p.discount_percent != null ? base * (1 - Number(p.discount_percent) / 100) : base;
-  const byAmount = p.discount_amount != null ? base - Number(p.discount_amount) : base;
-  const final = Math.max(0, Math.round(Math.min(byPercent, byAmount)));
-  const percentOff = base > 0 ? Math.round(((base - final) / base) * 100) : 0;
-  return { base, final, hasDiscount: true, percentOff };
+  return { base, ...applyDiscount(base, p.discount_percent, p.discount_amount) };
 }
 
-// 💰📏 سعر مقاس معين — بياخد سعر المقاس لو موجود، ويطبق الخصم عليه
+// 💰📏 سعر مقاس معين — خصم المقاس نفسه + فترة العرض على مستوى المنتج
 export function priceForSize(p: DbProduct, size: string) {
-  const sizePrice = (p.size_prices ?? []).find((sp) => sp.size === size)?.price;
-  return priceInfo({ ...p, price: sizePrice ?? p.price });
+  const basePrice = Number(p.price);
+  const sp = (p.size_prices ?? []).find((x) => x.size === size);
+  if (!sp) return priceInfo(p); // مقاس قديم بدون سطر — ياخد خصم مستوى المنتج
+  const base = sp.price;
+  if (!discountPeriodActive(p)) return { base, final: base, hasDiscount: false, percentOff: 0 };
+  return { base, ...applyDiscount(base, sp.discount_percent, sp.discount_amount) };
 }
 
+// 📋 سعر العرض في الكروت: "يبدأ من" أرخص مقاس — أو سعر المنتج الواحد
+export function listPrice(p: DbProduct) {
+  const sps = p.size_prices ?? [];
+  if (sps.length === 0) {
+    const info = priceInfo(p);
+    return { base: info.base, final: info.final, hasDiscount: info.hasDiscount, percentOff: info.percentOff, fromLabel: false };
+  }
+  const rows = sps.map((sp) => {
+    if (!discountPeriodActive(p)) return { base: sp.price, final: sp.price, hasDiscount: false, percentOff: 0 };
+    return { base: sp.price, ...applyDiscount(sp.price, sp.discount_percent, sp.discount_amount) };
+  });
+  const cheapest = rows.reduce((a, b) => (b.final < a.final ? b : a));
+  const maxPct = rows.reduce((m, r) => Math.max(m, r.percentOff), 0);
+  return {
+    base: cheapest.base,
+    final: cheapest.final,
+    hasDiscount: cheapest.hasDiscount,
+    percentOff: maxPct,
+    fromLabel: sps.length > 1,
+  };
+}
+
+// 🗂️ الأقسام
 export async function getCategories(onlyActive = true): Promise<DbCategory[]> {
   let q = supabase.from("categories").select("*").order("sort_order");
   if (onlyActive) q = q.eq("is_active", true);

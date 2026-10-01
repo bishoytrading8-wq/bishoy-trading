@@ -71,13 +71,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
             </ul>
           )}
 
-          {product.discount_percent != null && product.discount_percent > 0 && (
-            <span className="inline-block bg-red-500/15 border border-red-500/30 text-red-300 text-xs font-black rounded-full px-3 py-1 mt-4">
-              🔥 خصم {product.discount_percent}% — لفترة محدودة
-            </span>
-          )}
-
-          {/* 📏🎨 المقاسات والخيارات + السعر الديناميكي + الإضافة للسلة */}
+          {/* 📏🎨 المقاسات بأسعارها وخصوماتها + المواصفات الخاصة بكل مقاس + الإضافة للسلة */}
           <div className="mt-5">
             <ProductOptionsAdd product={product} />
           </div>
