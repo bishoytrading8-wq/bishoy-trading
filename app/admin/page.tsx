@@ -52,6 +52,8 @@ export default function AdminPage() {
   const [editingSizeSpec, setEditingSizeSpec] = useState<{ size: string; idx: number } | null>(null);
   const [editSizeSpecK, setEditSizeSpecK] = useState("");
   const [editSizeSpecV, setEditSizeSpecV] = useState("");
+  const [editingSizeName, setEditingSizeName] = useState<string | null>(null);
+  const [editSizeNameVal, setEditSizeNameVal] = useState("");
   const [colors, setColors] = useState<string[]>([]);
   const [colorInput, setColorInput] = useState("");
   const [sku, setSku] = useState("");
@@ -119,6 +121,19 @@ export default function AdminPage() {
     setSizePrices(sizePrices.filter((x) => x.size !== s));
     setSizeSpecs(sizeSpecs.filter((x) => x.size !== s));
     if (sizeSpecsOpen === s) setSizeSpecsOpen(null);
+    if (editingSizeName === s) setEditingSizeName(null);
+  };
+
+  // ✏️ إعادة تسمية المقاس — السعر والخصم والمواصفات تتنقل معه تلقائيًا
+  const renameSize = (old: string, newName: string) => {
+    const v = newName.trim();
+    if (!v || v === old) { setEditingSizeName(null); return; }
+    if (sizes.includes(v)) { alert(`مقاس باسم "${v}" موجود بالفعل — اختر اسمًا مختلفًا`); return; }
+    setSizes(sizes.map((x) => (x === old ? v : x)));
+    setSizePrices(sizePrices.map((x) => (x.size === old ? { ...x, size: v } : x)));
+    setSizeSpecs(sizeSpecs.map((x) => (x.size === old ? { ...x, size: v } : x)));
+    if (sizeSpecsOpen === old) setSizeSpecsOpen(v);
+    setEditingSizeName(null);
   };
 
   const onSizePrice = (s: string, val: string) => setSP(s, { price: cleanNum(val) });
@@ -144,7 +159,7 @@ export default function AdminPage() {
   const discountPctN = single.pctN;
   const discountedFinal = hasAnyDiscount ? single.final : null;
 
-  // 🔒 الحقل اللي اتكتب فيه حر، والتاني محسوب ومقفول
+  // 🔒 الحقل المكتوب حر، والمحسوب مقفول
   const pctFilled = discountSource === "pct";
   const amtFilled = discountSource === "amt";
   const percentShown = amtFilled ? (hasAnyDiscount ? String(discountPctN) : "") : discountPercent;
@@ -208,7 +223,7 @@ export default function AdminPage() {
     cancelSizeSpecEdit();
   };
 
-  // 📊 مؤشر إكمال
+  // 📊 مؤشر الإكمال
   const hasPrice = sizes.length > 0 ? sizes.every((s) => Number(getSP(s).price) > 0) : price.trim() !== "";
   const completionPct = Math.round(
     ((name.trim() ? 1 : 0) +
@@ -311,6 +326,7 @@ export default function AdminPage() {
         })
       );
       setSizeSpecs(p.sizeSpecs ?? []);
+      setEditingSizeName(null);
       setColors(p.colors ?? []);
       setSku(p.sku ?? ""); setStockStatus(p.stockStatus ?? "available"); setStockQty(p.stockQty ?? "");
       setSpecs(p.specs ?? []);
@@ -475,6 +491,7 @@ export default function AdminPage() {
     setFeatures([]); setFeatureInput(""); setImages([]);
     setSizes([]); setSizeInput(""); setSizePrices([]); setSizeSpecs([]); setSizeSpecsOpen(null);
     setTmpSpecK(""); setTmpSpecV("");
+    setEditingSizeName(null);
     cancelSizeSpecEdit();
     setColors([]); setColorInput("");
     setSku(""); setStockStatus("available"); setStockQty(""); setSpecs([]);
@@ -521,6 +538,7 @@ export default function AdminPage() {
     );
     setSizeSpecs(p.size_specs ?? []);
     setSizeSpecsOpen(null);
+    setEditingSizeName(null);
     setColors(p.colors ?? []);
     setColorInput("");
     setSku(p.sku ?? "");
@@ -829,7 +847,7 @@ export default function AdminPage() {
                 </div>
               )}
 
-              {/* ─ المقاسات: كل مقاس بسعره وخصمه ومواصفاته ─ */}
+              {/* ─ المقاسات: كل مقاس بسعره وخصمه ومواصفاته + إعادة تسمية ─ */}
               {sizes.map((s, i) => {
                 const r = getSP(s);
                 const base = Number(r.price) || 0;
@@ -840,13 +858,33 @@ export default function AdminPage() {
                 const lockAmt = r.src === "pct";
                 const specsOf = specsForSize(s);
                 const isOpen = sizeSpecsOpen === s;
+                const isRenaming = editingSizeName === s;
                 return (
                   <div key={s + i} className="rounded-xl border border-white/10 overflow-hidden">
                     <div className="flex items-center gap-2 p-3 bg-white/[0.02] flex-wrap">
-                      <span className="shrink-0 inline-flex items-center gap-1 text-xs font-bold bg-violet-500/10 border border-violet-500/30 text-violet-300 rounded-full px-3 py-2">
-                        📏 {s}
-                        <button onClick={() => removeSize(s)} className="text-red-400 hover:text-red-300 font-black" aria-label={`حذف ${s}`}>✕</button>
-                      </span>
+                      {/* ✏️ شارة المقاس — بوضعين: عرض / تعديل الاسم */}
+                      {isRenaming ? (
+                        <span className="shrink-0 inline-flex items-center gap-1.5">
+                          <input
+                            autoFocus
+                            value={editSizeNameVal}
+                            onChange={(e) => setEditSizeNameVal(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") { e.preventDefault(); renameSize(s, editSizeNameVal); }
+                              if (e.key === "Escape") setEditingSizeName(null);
+                            }}
+                            className="w-32 rounded-lg bg-white/5 border border-orange-500/60 px-3 py-2 text-xs font-bold outline-none"
+                          />
+                          <button onClick={() => renameSize(s, editSizeNameVal)} title="حفظ الاسم" className="bg-green-500/20 border border-green-500/40 text-green-300 rounded-lg px-2.5 py-2 text-xs font-bold transition hover:bg-green-500/30">💾</button>
+                          <button onClick={() => setEditingSizeName(null)} title="إلغاء" className="border border-white/15 text-white/50 rounded-lg px-2.5 py-2 text-xs font-bold transition">✕</button>
+                        </span>
+                      ) : (
+                        <span className="shrink-0 inline-flex items-center gap-1 text-xs font-bold bg-violet-500/10 border border-violet-500/30 text-violet-300 rounded-full px-3 py-2">
+                          📏 {s}
+                          <button onClick={() => { setEditingSizeName(s); setEditSizeNameVal(s); }} title="تعديل اسم المقاس" className="text-blue-400 hover:text-blue-300 font-black">✏️</button>
+                          <button onClick={() => removeSize(s)} title="حذف المقاس" className="text-red-400 hover:text-red-300 font-black">✕</button>
+                        </span>
+                      )}
                       <button
                         onClick={() => setSizeSpecsOpen(isOpen ? null : s)}
                         className={`shrink-0 mr-auto rounded-lg px-3 py-2 text-xs font-bold border transition ${isOpen ? "bg-amber-500/20 border-amber-500/40 text-amber-300" : specsOf.length > 0 ? "bg-amber-500/10 border-amber-500/30 text-amber-300" : "border-white/15 text-white/50 hover:bg-white/5"}`}
@@ -918,7 +956,7 @@ export default function AdminPage() {
                                   const srcSpecs = specsForSize(other);
                                   if (srcSpecs.length === 0) { alert(`مقاس "${other}" مفيهوش مواصفات لسه — اكتبها الأول أو انسخ من مقاس تاني`); return; }
                                   if (!confirm(`انسخ ${srcSpecs.length} مواصفات من مقاس "${other}"؟\nهتستبدل مواصفات مقاس "${s}" الحالية — وتعدل الأرقام بعدها`)) return;
-                                  // ✅ الإصلاح: نشيل سطر المقاس القديم ونضيف سطر جديد دايمًا — فبيشتغل حتى لو المقاس كان فاضي
+                                  // ✅ نشيل سطر المقاس القديم ونضيف سطر جديد دايمًا — بيشغل حتى لو المقاس كان فاضي
                                   const others = sizeSpecs.filter((x) => x.size !== s);
                                   setSizeSpecs([...others, { size: s, specs: srcSpecs.map((sp) => ({ ...sp })) }]);
                                 }}
@@ -972,7 +1010,7 @@ export default function AdminPage() {
                 <input className={inputCls} placeholder="اكتب مقاسًا جديدًا واضغط Enter — مثال: 4 بوصة = 100 مم" value={sizeInput} onChange={(e) => setSizeInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && sizeInput.trim()) { e.preventDefault(); addSize(); } }} />
                 <button onClick={addSize} className="shrink-0 w-11 rounded-xl bg-orange-500 hover:bg-orange-400 font-black text-lg transition">＋</button>
               </div>
-              {sizes.length > 0 && <p className="text-[11px] text-white/30">💡 كل مقاس مستقل: سعره + خصمه + مواصفاته — والعميل يشوف بيانات المقاس اللي اختاره فقط. والسعر اللي بيظهر "يبدأ من" هو أرخص مقاس.</p>}
+              {sizes.length > 0 && <p className="text-[11px] text-white/30">💡 كل مقاس مستقل: سعره + خصمه + مواصفاته — وتقدر تعدل اسم أي مقاس بـ ✏️. والسعر اللي بيظهر "يبدأ من" هو أرخص مقاس.</p>}
 
               {/* 📅 فترة العرض (لكل المنتج) */}
               <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 space-y-2">
